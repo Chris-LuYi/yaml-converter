@@ -1,0 +1,29 @@
+# yaml-converter schema example
+# Place this file alongside your data YAML or reference it via --schema
+
+columns:
+  - field: name
+    header: Name
+    group: Personal Info      # optional: groups columns under a merged parent header
+    type: string
+    required: true
+
+  - field: birthdate
+    header: Date of Birth
+    group: Personal Info
+    type: date
+    format: YYYY-MM-DD        # dayjs format string
+
+  - field: status
+    header: Status
+    type: options
+    options: [Active, Inactive, Pending]   # creates Excel dropdown
+    required: true
+
+  - field: score
+    header: Score
+    type: number
+
+  - field: verified
+    header: Verified
+    type: boolean
