@@ -1,0 +1,26 @@
+columns:
+  - field: name
+    header: Name
+    group: Personal Info
+    type: string
+    required: true
+
+  - field: birthdate
+    header: Date of Birth
+    group: Personal Info
+    type: date
+    format: YYYY-MM-DD
+
+  - field: status
+    header: Status
+    type: options
+    options: [Active, Inactive, Pending]
+    required: true
+
+  - field: score
+    header: Score
+    type: number
+
+  - field: verified
+    header: Verified
+    type: boolean

@@ -1,0 +1,10 @@
+- name: Alice
+  birthdate: "1990-01-15"
+  status: Active
+  score: 95
+  verified: true
+
+- name: Bob
+  status: Inactive
+  score: 72
+  verified: false
