@@ -1,9 +1,11 @@
 import ExcelJS from "exceljs"
 import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
+import utc from "dayjs/plugin/utc"
 import type { Schema } from "../types"
 
 dayjs.extend(customParseFormat)
+dayjs.extend(utc)
 
 export async function toExcel(
   rows: Record<string, unknown>[],
@@ -34,7 +36,7 @@ export async function toExcel(
       }
 
       if (col.type === "date" && typeof value === "string") {
-        const date = dayjs(value, col.format ?? "YYYY-MM-DD", true)
+        const date = dayjs.utc(value, col.format ?? "YYYY-MM-DD", true)
         if (date.isValid()) {
           cell.value = date.toDate()
           cell.numFmt = toExcelDateFmt(col.format ?? "YYYY-MM-DD")
