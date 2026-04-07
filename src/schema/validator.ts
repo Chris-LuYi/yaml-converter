@@ -12,7 +12,7 @@ export function validateRows(
     const result = zodSchema.safeParse(row)
     if (!result.success) {
       for (const issue of result.error.issues) {
-        const field = issue.path[0] as string
+        const field = (issue.path[0] as string | undefined) ?? "__row__"
         const col = schema.columns.find((c) => c.field === field)
         errors.push({
           row: index + 1,
