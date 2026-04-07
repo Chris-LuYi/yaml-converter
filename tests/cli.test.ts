@@ -84,6 +84,7 @@ describe("CLI", () => {
   test("--validate does not write output file", () => {
     const r = run(
       "-i", "tests/fixtures/data.xlsx",
+      "-o", "/tmp/cli-out.yaml",
       "--schema", "tests/fixtures/schema.yaml",
       "--validate"
     )

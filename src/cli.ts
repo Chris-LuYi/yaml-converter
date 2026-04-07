@@ -36,6 +36,12 @@ async function run(opts: ConvertOptions) {
     process.exit(2)
   }
 
+  // --output is required unless --validate is set
+  if (!opts.validate && !opts.output) {
+    emit(opts.json, { status: "fatal", error: "Missing required option: -o, --output <file> (required unless --validate is set)" })
+    process.exit(2)
+  }
+
   try {
     const schema = loadSchema(opts.schema)
     const ext = opts.input.split(".").pop()?.toLowerCase() ?? ""
@@ -75,7 +81,7 @@ async function run(opts: ConvertOptions) {
       }
     }
 
-    emit(opts.json, { status: "ok", input: opts.input, output: opts.output })
+    emit(opts.json, { status: "ok", input: opts.input, output: opts.output ?? null })
     if (!opts.json) console.log(chalk.green("Done"))
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -96,7 +102,7 @@ function deriveErrorPath(opts: ConvertOptions): string {
   return base.replace(/\.[^.]+$/, "") + ".errors.json"
 }
 
-function writeErrors(path: string, file: string, errors: ValidationError[]) {
+function writeErrors(filePath: string, file: string, errors: ValidationError[]) {
   const out: ErrorOutput = { summary: { total: errors.length, file }, errors }
-  writeFileSync(path, JSON.stringify(out, null, 2))
+  writeFileSync(filePath, JSON.stringify(out, null, 2))
 }
