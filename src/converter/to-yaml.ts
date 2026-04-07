@@ -1,7 +1,7 @@
-import ExcelJS from "exceljs"
 import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
 import utc from "dayjs/plugin/utc"
+import ExcelJS from "exceljs"
 import type { Schema } from "../types"
 
 dayjs.extend(customParseFormat)
@@ -9,7 +9,7 @@ dayjs.extend(utc)
 
 export async function toYaml(
   inputPath: string,
-  schema: Schema
+  schema: Schema,
 ): Promise<Record<string, unknown>[]> {
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.readFile(inputPath)
@@ -39,9 +39,11 @@ export async function toYaml(
       const field = colIndexToField.get(colIdx)
       if (!field) return
 
-      const col = schema.columns.find((c) => c.field === field)!
+      const col = schema.columns.find((c) => c.field === field)
+      if (!col) return
 
-      if (cellValue === null || cellValue === undefined || cellValue === "") return
+      if (cellValue === null || cellValue === undefined || cellValue === "")
+        return
 
       if (col.type === "date") {
         if (cellValue instanceof Date) {
@@ -50,7 +52,8 @@ export async function toYaml(
           obj[field] = cellValue.trim()
         }
       } else if (col.type === "number") {
-        obj[field] = typeof cellValue === "number" ? cellValue : Number(cellValue)
+        obj[field] =
+          typeof cellValue === "number" ? cellValue : Number(cellValue)
       } else if (col.type === "boolean") {
         obj[field] = Boolean(cellValue)
       } else {
@@ -64,10 +67,15 @@ export async function toYaml(
   return rows
 }
 
-function detectHeaderRow(ws: ExcelJS.Worksheet, schemaHeaders: Set<string>): number {
-  const row1Values = (ws.getRow(1).values as unknown[])
-    .filter((v): v is string => typeof v === "string" && v.length > 0)
+function detectHeaderRow(
+  ws: ExcelJS.Worksheet,
+  schemaHeaders: Set<string>,
+): number {
+  const row1Values = (ws.getRow(1).values as unknown[]).filter(
+    (v): v is string => typeof v === "string" && v.length > 0,
+  )
 
-  const allMatch = row1Values.length > 0 && row1Values.every((v) => schemaHeaders.has(v))
+  const allMatch =
+    row1Values.length > 0 && row1Values.every((v) => schemaHeaders.has(v))
   return allMatch ? 1 : 2
 }

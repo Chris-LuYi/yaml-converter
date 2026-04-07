@@ -1,7 +1,7 @@
-import ExcelJS from "exceljs"
 import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
 import utc from "dayjs/plugin/utc"
+import ExcelJS from "exceljs"
 import type { Schema } from "../types"
 
 dayjs.extend(customParseFormat)
@@ -10,7 +10,7 @@ dayjs.extend(utc)
 export async function toExcel(
   rows: Record<string, unknown>[],
   schema: Schema,
-  outputPath: string
+  outputPath: string,
 ): Promise<void> {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet("Sheet1")
@@ -41,7 +41,7 @@ export async function toExcel(
           cell.value = date.toDate()
           cell.numFmt = toExcelDateFmt(col.format ?? "YYYY-MM-DD")
         } else {
-          cell.value = value  // preserve original string rather than silently dropping
+          cell.value = value // preserve original string rather than silently dropping
         }
       } else if (col.type === "number") {
         cell.value = typeof value === "number" ? value : Number(value)
@@ -82,7 +82,8 @@ function addGroupHeaderRow(ws: ExcelJS.Worksheet, schema: Schema) {
   schema.columns.forEach((col, idx) => {
     const colNum = idx + 1
     if (!col.group) return
-    const span = groupSpans.get(col.group)!
+    const span = groupSpans.get(col.group)
+    if (!span) return
     if (span.start === colNum) {
       row.getCell(colNum).value = col.group
       if (span.start !== span.end) {

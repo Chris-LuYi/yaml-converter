@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { toYaml } from "../../src/converter/to-yaml"
 import { loadSchema } from "../../src/schema/loader"
 
@@ -50,7 +50,7 @@ describe("toYaml", () => {
     expect(rows[0].name).toBe("Charlie")
     expect(rows[0].status).toBe("Active")
 
-    const { unlinkSync } = await import("fs")
+    const { unlinkSync } = await import("node:fs")
     unlinkSync("/tmp/single-header.xlsx")
   })
 })

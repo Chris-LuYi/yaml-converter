@@ -1,6 +1,6 @@
-import { describe, test, expect } from "bun:test"
-import { loadSchema, buildZodSchema } from "../../src/schema/loader"
-import { writeFileSync, unlinkSync } from "fs"
+import { describe, expect, test } from "bun:test"
+import { unlinkSync, writeFileSync } from "node:fs"
+import { buildZodSchema, loadSchema } from "../../src/schema/loader"
 
 const FIXTURE_SCHEMA = `
 columns:
@@ -71,7 +71,11 @@ describe("buildZodSchema", () => {
     writeFileSync("/tmp/test-schema.yaml", FIXTURE_SCHEMA)
     const schema = loadSchema("/tmp/test-schema.yaml")
     const zod = buildZodSchema(schema)
-    const result = zod.safeParse({ name: "Alice", status: "Active", birthday: "not-a-date" })
+    const result = zod.safeParse({
+      name: "Alice",
+      status: "Active",
+      birthday: "not-a-date",
+    })
     expect(result.success).toBe(false)
     unlinkSync("/tmp/test-schema.yaml")
   })

@@ -1,13 +1,19 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { existsSync, unlinkSync } from "node:fs"
+import ExcelJS from "exceljs"
 import { toExcel } from "../../src/converter/to-excel"
 import { loadSchema } from "../../src/schema/loader"
-import ExcelJS from "exceljs"
-import { existsSync, unlinkSync } from "fs"
 
 const OUTPUT = "/tmp/test-to-excel.xlsx"
 const schema = loadSchema("tests/fixtures/schema.yaml")
 const rows = [
-  { name: "Alice", birthdate: "1990-01-15", status: "Active", score: 95, verified: true },
+  {
+    name: "Alice",
+    birthdate: "1990-01-15",
+    status: "Active",
+    score: 95,
+    verified: true,
+  },
   { name: "Bob", status: "Inactive", score: 72, verified: false },
 ]
 

@@ -1,9 +1,9 @@
-import { readFileSync } from "fs"
-import { parse } from "yaml"
-import { z, type ZodTypeAny } from "zod"
+import { readFileSync } from "node:fs"
 import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
-import type { Schema, ColumnSchema } from "../types"
+import { parse } from "yaml"
+import { type ZodTypeAny, z } from "zod"
+import type { ColumnSchema, Schema } from "../types"
 
 dayjs.extend(customParseFormat)
 
@@ -16,7 +16,9 @@ export function loadSchema(schemaPath: string): Schema {
   return raw
 }
 
-export function buildZodSchema(schema: Schema): z.ZodObject<Record<string, ZodTypeAny>> {
+export function buildZodSchema(
+  schema: Schema,
+): z.ZodObject<Record<string, ZodTypeAny>> {
   const shape: Record<string, ZodTypeAny> = {}
   for (const col of schema.columns) {
     shape[col.field] = buildFieldZod(col)
@@ -29,7 +31,9 @@ function buildFieldZod(col: ColumnSchema): ZodTypeAny {
 
   switch (col.type) {
     case "string":
-      field = col.required ? z.string().min(1, `${col.field} is required`) : z.string()
+      field = col.required
+        ? z.string().min(1, `${col.field} is required`)
+        : z.string()
       break
 
     case "number":
@@ -38,10 +42,9 @@ function buildFieldZod(col: ColumnSchema): ZodTypeAny {
 
     case "date": {
       const fmt = col.format ?? "YYYY-MM-DD"
-      field = z.string().refine(
-        (val) => dayjs(val, fmt, true).isValid(),
-        { message: `Must be a valid date in format ${fmt}` }
-      )
+      field = z.string().refine((val) => dayjs(val, fmt, true).isValid(), {
+        message: `Must be a valid date in format ${fmt}`,
+      })
       break
     }
 
@@ -50,7 +53,10 @@ function buildFieldZod(col: ColumnSchema): ZodTypeAny {
       break
 
     case "options":
-      if (!col.options?.length) throw new Error(`Column '${col.field}' has type 'options' but no options defined`)
+      if (!col.options?.length)
+        throw new Error(
+          `Column '${col.field}' has type 'options' but no options defined`,
+        )
       field = z.enum(col.options as [string, ...string[]])
       break
 

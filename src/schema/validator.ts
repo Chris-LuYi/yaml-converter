@@ -1,9 +1,9 @@
-import type { Schema, ColumnSchema, ValidationError } from "../types"
+import type { ColumnSchema, Schema, ValidationError } from "../types"
 import { buildZodSchema } from "./loader"
 
 export function validateRows(
   rows: Record<string, unknown>[],
-  schema: Schema
+  schema: Schema,
 ): ValidationError[] {
   const zodSchema = buildZodSchema(schema)
   const errors: ValidationError[] = []

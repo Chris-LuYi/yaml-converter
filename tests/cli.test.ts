@@ -1,6 +1,6 @@
-import { describe, test, expect, afterEach } from "bun:test"
-import { spawnSync } from "child_process"
-import { existsSync, unlinkSync } from "fs"
+import { afterEach, describe, expect, test } from "bun:test"
+import { spawnSync } from "node:child_process"
+import { existsSync, unlinkSync } from "node:fs"
 
 function run(...args: string[]) {
   return spawnSync("bun", ["run", "src/cli.ts", ...args], {
@@ -10,7 +10,11 @@ function run(...args: string[]) {
 }
 
 afterEach(() => {
-  for (const f of ["/tmp/cli-out.xlsx", "/tmp/cli-out.yaml", "/tmp/cli-out.errors.json"]) {
+  for (const f of [
+    "/tmp/cli-out.xlsx",
+    "/tmp/cli-out.yaml",
+    "/tmp/cli-out.errors.json",
+  ]) {
     if (existsSync(f)) unlinkSync(f)
   }
 })
@@ -26,9 +30,12 @@ describe("CLI", () => {
 
   test("YAML → Excel succeeds with exit code 0", () => {
     const r = run(
-      "-i", "tests/fixtures/data.yaml",
-      "-o", "/tmp/cli-out.xlsx",
-      "--schema", "tests/fixtures/schema.yaml"
+      "-i",
+      "tests/fixtures/data.yaml",
+      "-o",
+      "/tmp/cli-out.xlsx",
+      "--schema",
+      "tests/fixtures/schema.yaml",
     )
     expect(r.status).toBe(0)
     expect(existsSync("/tmp/cli-out.xlsx")).toBe(true)
@@ -36,9 +43,12 @@ describe("CLI", () => {
 
   test("Excel → YAML succeeds with exit code 0", () => {
     const r = run(
-      "-i", "tests/fixtures/data.xlsx",
-      "-o", "/tmp/cli-out.yaml",
-      "--schema", "tests/fixtures/schema.yaml"
+      "-i",
+      "tests/fixtures/data.xlsx",
+      "-o",
+      "/tmp/cli-out.yaml",
+      "--schema",
+      "tests/fixtures/schema.yaml",
     )
     expect(r.status).toBe(0)
     expect(existsSync("/tmp/cli-out.yaml")).toBe(true)
@@ -46,10 +56,13 @@ describe("CLI", () => {
 
   test("--json outputs machine-readable success object", () => {
     const r = run(
-      "-i", "tests/fixtures/data.yaml",
-      "-o", "/tmp/cli-out.xlsx",
-      "--schema", "tests/fixtures/schema.yaml",
-      "--json"
+      "-i",
+      "tests/fixtures/data.yaml",
+      "-o",
+      "/tmp/cli-out.xlsx",
+      "--schema",
+      "tests/fixtures/schema.yaml",
+      "--json",
     )
     const parsed = JSON.parse(r.stdout)
     expect(parsed.status).toBe("ok")
@@ -58,10 +71,13 @@ describe("CLI", () => {
 
   test("missing input file exits with code 2 and fatal JSON", () => {
     const r = run(
-      "-i", "nonexistent.yaml",
-      "-o", "/tmp/cli-out.xlsx",
-      "--schema", "tests/fixtures/schema.yaml",
-      "--json"
+      "-i",
+      "nonexistent.yaml",
+      "-o",
+      "/tmp/cli-out.xlsx",
+      "--schema",
+      "tests/fixtures/schema.yaml",
+      "--json",
     )
     expect(r.status).toBe(2)
     const parsed = JSON.parse(r.stdout)
@@ -71,10 +87,13 @@ describe("CLI", () => {
 
   test("missing schema file exits with code 2", () => {
     const r = run(
-      "-i", "tests/fixtures/data.yaml",
-      "-o", "/tmp/cli-out.xlsx",
-      "--schema", "nonexistent-schema.yaml",
-      "--json"
+      "-i",
+      "tests/fixtures/data.yaml",
+      "-o",
+      "/tmp/cli-out.xlsx",
+      "--schema",
+      "nonexistent-schema.yaml",
+      "--json",
     )
     expect(r.status).toBe(2)
     const parsed = JSON.parse(r.stdout)
@@ -83,10 +102,13 @@ describe("CLI", () => {
 
   test("--validate does not write output file", () => {
     const r = run(
-      "-i", "tests/fixtures/data.xlsx",
-      "-o", "/tmp/cli-out.yaml",
-      "--schema", "tests/fixtures/schema.yaml",
-      "--validate"
+      "-i",
+      "tests/fixtures/data.xlsx",
+      "-o",
+      "/tmp/cli-out.yaml",
+      "--schema",
+      "tests/fixtures/schema.yaml",
+      "--validate",
     )
     expect(r.status).toBe(0)
     expect(existsSync("/tmp/cli-out.yaml")).toBe(false)
