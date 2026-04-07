@@ -38,11 +38,10 @@ function buildFieldZod(col: ColumnSchema): ZodTypeAny {
 
     case "date": {
       const fmt = col.format ?? "YYYY-MM-DD"
-      const dateValidator = z.string().refine(
+      field = z.string().refine(
         (val) => dayjs(val, fmt, true).isValid(),
         { message: `Must be a valid date in format ${fmt}` }
       )
-      field = col.required ? dateValidator.pipe(z.string().min(1)) : dateValidator
       break
     }
 
