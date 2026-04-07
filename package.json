@@ -29,7 +29,5 @@
     "@types/bun": "latest",
     "typescript": "^5.4.0"
   },
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ]
+  "trustedDependencies": ["@biomejs/biome"]
 }
