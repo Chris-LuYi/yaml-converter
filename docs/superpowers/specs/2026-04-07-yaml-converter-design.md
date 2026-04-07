@@ -56,7 +56,7 @@ yaml-converter/
 | `dayjs` | Date parsing and formatting (handles `YYYY-MM-DD` and other format strings) |
 | `chalk` | Terminal error/success output coloring |
 
-Dev: `bun` (runtime + test runner + build tool), `typescript`
+Dev: `bun` (runtime + test runner + build tool), `typescript`, `@biomejs/biome` (lint + format), `@changesets/cli` (versioning + publishing)
 
 ---
 
@@ -306,6 +306,88 @@ Using Bun's built-in test runner (`bun test`).
 - `--error-output` flag overrides error file path
 - Error `row` numbers are 1-based data row indices, not Excel row numbers
 - Single-header-row Excel files (no group row) resolve column names from row 1
+
+---
+
+## CI / CD
+
+Mirrors the pattern used in `daas-cli`: Biome for linting, Bun for tests and build, Changesets for versioning and npm publishing.
+
+### Workflows
+
+**`.github/workflows/ci.yml`** — runs on every push and PR:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.9"
+      - run: bun install
+      - run: bunx biome check .
+      - run: bun test
+      - run: bun run build
+
+  release:
+    name: Release
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.9"
+      - run: bun install
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1
+        with:
+          publish: bun run release
+          version: bun run version
+          commit: "chore: release"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+**Changeset flow:**
+- Developer runs `bunx changeset` to describe a change, commits the `.changeset/` file with the PR
+- On merge to `main`, Changesets Action opens a "Version Packages" PR that bumps `package.json` version and updates `CHANGELOG.md`
+- On merge of that PR, Changesets Action runs `bun run release` which builds and publishes to npm
+
+### Scripts in `package.json`
+
+```json
+{
+  "scripts": {
+    "build": "bun build src/cli.ts --outdir dist --target node",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "changeset": "changeset",
+    "version": "changeset version && bun install",
+    "release": "bun run build && changeset publish"
+  }
+}
+```
+
+### Biome config
+
+`biome.json` at project root — mirrors `daas-cli` config (lint + format rules for TypeScript).
 
 ---
 
