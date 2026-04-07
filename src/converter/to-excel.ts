@@ -15,8 +15,6 @@ export async function toExcel(
 
   const hasGroups = schema.columns.some((c) => c.group)
   const headerRowNum = hasGroups ? 2 : 1
-  const dataStartRow = headerRowNum + 1
-
   if (hasGroups) {
     addGroupHeaderRow(ws, schema)
   }
@@ -40,6 +38,8 @@ export async function toExcel(
         if (date.isValid()) {
           cell.value = date.toDate()
           cell.numFmt = toExcelDateFmt(col.format ?? "YYYY-MM-DD")
+        } else {
+          cell.value = value  // preserve original string rather than silently dropping
         }
       } else if (col.type === "number") {
         cell.value = typeof value === "number" ? value : Number(value)
@@ -91,5 +91,20 @@ function addGroupHeaderRow(ws: ExcelJS.Worksheet, schema: Schema) {
 }
 
 function toExcelDateFmt(fmt: string): string {
-  return fmt.toLowerCase()
+  // Map dayjs tokens to Excel numFmt tokens (common subset)
+  return fmt
+    .replace(/YYYY/g, "yyyy")
+    .replace(/YY/g, "yy")
+    .replace(/MMMM/g, "mmmm")
+    .replace(/MMM/g, "mmm")
+    .replace(/MM/g, "mm")
+    .replace(/M/g, "m")
+    .replace(/DDDD/g, "dddd")
+    .replace(/DDD/g, "ddd")
+    .replace(/DD/g, "dd")
+    .replace(/D/g, "d")
+    .replace(/HH/g, "hh")
+    .replace(/H/g, "h")
+    .replace(/ss/g, "ss")
+    .replace(/s/g, "s")
 }
