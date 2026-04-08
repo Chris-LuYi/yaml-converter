@@ -2,12 +2,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
-import { parse, stringify } from "yaml"
+import { Document, isMap, isPair, isScalar, isSeq, parse } from "yaml"
 import { toExcel } from "./converter/to-excel"
 import { sanitizeSheetName, toYamlAll } from "./converter/to-yaml"
 import { loadSchema } from "./schema/loader"
 import { validateRows } from "./schema/validator"
-import type { ConvertOptions, ErrorOutput, ValidationError } from "./types"
+import type {
+  ConvertOptions,
+  ErrorOutput,
+  Schema,
+  ValidationError,
+} from "./types"
 
 const program = new Command()
 
@@ -49,17 +54,11 @@ async function run(opts: ConvertOptions) {
   }
 
   if (!existsSync(opts.input)) {
-    emit(opts.json, {
-      status: "fatal",
-      error: `Input file not found: ${opts.input}`,
-    })
+    emitFatal(opts.json, `Input file not found: ${opts.input}`)
     process.exit(2)
   }
   if (!existsSync(opts.schema)) {
-    emit(opts.json, {
-      status: "fatal",
-      error: `Schema file not found: ${opts.schema}`,
-    })
+    emitFatal(opts.json, `Schema file not found: ${opts.schema}`)
     process.exit(2)
   }
 
@@ -68,11 +67,10 @@ async function run(opts: ConvertOptions) {
 
   // --output is required unless --validate is set
   if (!opts.validate && !opts.output) {
-    emit(opts.json, {
-      status: "fatal",
-      error:
-        "Missing required option: -o, --output <file> (required unless --validate is set)",
-    })
+    emitFatal(
+      opts.json,
+      "Missing required option: -o, --output <file> (required unless --validate is set)",
+    )
     process.exit(2)
   }
 
@@ -133,7 +131,7 @@ async function run(opts: ConvertOptions) {
         for (const [sheetName, rows] of sheetMap) {
           if (rows.length === 0) continue
           const fileName = `${sanitizeSheetName(sheetName)}.yaml`
-          writeFileSync(join(opts.output, fileName), stringify(rows))
+          writeFileSync(join(opts.output, fileName), formatYaml(rows, schema))
         }
       }
 
@@ -146,7 +144,7 @@ async function run(opts: ConvertOptions) {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    emit(opts.json, { status: "fatal", error: message })
+    emitFatal(opts.json, message)
     process.exit(2)
   }
 }
@@ -154,6 +152,14 @@ async function run(opts: ConvertOptions) {
 function emit(jsonMode: boolean | undefined, data: object) {
   if (jsonMode) {
     process.stdout.write(`${JSON.stringify(data)}\n`)
+  }
+}
+
+function emitFatal(jsonMode: boolean | undefined, error: string) {
+  if (jsonMode) {
+    process.stdout.write(`${JSON.stringify({ status: "fatal", error })}\n`)
+  } else {
+    console.error(chalk.red(`Error: ${error}`))
   }
 }
 
@@ -193,6 +199,44 @@ function deriveErrorPath(opts: ConvertOptions, isMultiSheet: boolean): string {
   }
   const base = opts.output ?? opts.input
   return `${base.replace(/\.[^.]+$/, "")}.errors.json`
+}
+
+/**
+ * Serialize rows to YAML with schema-aware quoting and blank lines between entries.
+ * - date fields: always QUOTE_DOUBLE (cross-parser safety for YAML 1.1 consumers)
+ * - strings matching digits+dots (semver-like): QUOTE_DOUBLE to preserve intent
+ * - blank line between each array entry for readability
+ */
+function formatYaml(rows: Record<string, unknown>[], schema: Schema): string {
+  const dateFields = new Set(
+    schema.columns.filter((c) => c.type === "date").map((c) => c.field),
+  )
+
+  const parts = rows.map((row) => {
+    const doc = new Document([row])
+    const seq = doc.contents
+    if (isSeq(seq)) {
+      for (const item of seq.items) {
+        if (isMap(item)) {
+          for (const pair of item.items) {
+            if (isPair(pair) && isScalar(pair.key) && isScalar(pair.value)) {
+              const fieldName = String(pair.key.value)
+              const val = pair.value.value
+              if (
+                typeof val === "string" &&
+                (dateFields.has(fieldName) || /^\d+(\.\d+)+$/.test(val))
+              ) {
+                pair.value.type = "QUOTE_DOUBLE"
+              }
+            }
+          }
+        }
+      }
+    }
+    return doc.toString().trimEnd()
+  })
+
+  return `${parts.join("\n\n")}\n`
 }
 
 function writeErrors(
