@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { toYaml } from "../../src/converter/to-yaml"
+import {
+  sanitizeSheetName,
+  toYaml,
+  toYamlAll,
+} from "../../src/converter/to-yaml"
 import { loadSchema } from "../../src/schema/loader"
 
 const schema = loadSchema("tests/fixtures/schema.yaml")
@@ -52,5 +56,50 @@ describe("toYaml", () => {
 
     const { unlinkSync } = await import("node:fs")
     unlinkSync("/tmp/single-header.xlsx")
+  })
+})
+
+const MULTI_FIXTURE = "tests/fixtures/multi-sheet.xlsx"
+
+describe("toYamlAll", () => {
+  test("returns a Map with one entry per sheet", async () => {
+    const result = await toYamlAll(MULTI_FIXTURE, schema)
+    expect(result.size).toBe(2)
+    expect(result.has("People")).toBe(true)
+    expect(result.has("Staff")).toBe(true)
+  })
+
+  test("each sheet's rows are correctly parsed", async () => {
+    const result = await toYamlAll(MULTI_FIXTURE, schema)
+    const people = result.get("People")
+    expect(people).toBeDefined()
+    expect(people).toHaveLength(2)
+    expect(people[0].name).toBe("Alice")
+    expect(people[0].birthdate).toBe("1990-01-15")
+    const staff = result.get("Staff")
+    expect(staff).toBeDefined()
+    expect(staff).toHaveLength(2)
+    expect(staff[0].name).toBe("Carol")
+  })
+
+  test("empty sheet produces empty array not absent entry", async () => {
+    const result = await toYamlAll(MULTI_FIXTURE, schema)
+    for (const [, rows] of result) {
+      expect(Array.isArray(rows)).toBe(true)
+    }
+  })
+})
+
+describe("sanitizeSheetName", () => {
+  test("replaces forbidden characters with underscores", () => {
+    expect(sanitizeSheetName("Sheet/1")).toBe("Sheet_1")
+    expect(sanitizeSheetName("My:Sheet")).toBe("My_Sheet")
+    expect(sanitizeSheetName('A"B')).toBe("A_B")
+  })
+
+  test("leaves safe names unchanged", () => {
+    expect(sanitizeSheetName("People")).toBe("People")
+    expect(sanitizeSheetName("Sheet 1")).toBe("Sheet 1")
+    expect(sanitizeSheetName("MFE-List")).toBe("MFE-List")
   })
 })
