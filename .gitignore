@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.errors.json
+demo/*.xlsx
+demo/*.yaml.errors.json
+demo/roundtrip.yaml
