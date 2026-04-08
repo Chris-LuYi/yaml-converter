@@ -99,12 +99,21 @@ async function run(opts: ConvertOptions) {
         status: "ok",
         input: opts.input,
         output: opts.output ?? null,
+        rows: rows.length,
       })
-      if (!opts.json) console.log(chalk.green("Done"))
+      if (!opts.json) {
+        const verb = opts.validate ? "validated" : "converted"
+        const dest =
+          opts.output && !opts.validate ? chalk.gray(` → ${opts.output}`) : ""
+        console.log(
+          `${chalk.green("Done")}  ${rows.length} rows ${verb}${dest}`,
+        )
+      }
     } else {
       // Excel → YAML (multi-sheet directory output)
       const sheetMap = await toYamlAll(opts.input, schema)
       const allErrors: ValidationError[] = []
+      const nonEmptySheets = new Map<string, Record<string, unknown>[]>()
 
       for (const [sheetName, rows] of sheetMap) {
         if (rows.length === 0) {
@@ -113,6 +122,7 @@ async function run(opts: ConvertOptions) {
           )
           continue
         }
+        nonEmptySheets.set(sheetName, rows)
         const sheetErrors = validateRows(rows, schema).map((e) => ({
           ...e,
           sheet: sheetName,
@@ -127,21 +137,55 @@ async function run(opts: ConvertOptions) {
         process.exit(1)
       }
 
+      const sheetRowCounts: Record<string, number> = {}
       if (!opts.validate && opts.output) {
         mkdirSync(opts.output, { recursive: true })
-        for (const [sheetName, rows] of sheetMap) {
-          if (rows.length === 0) continue
+        for (const [sheetName, rows] of nonEmptySheets) {
           const fileName = `${sanitizeSheetName(sheetName)}.yaml`
           writeFileSync(join(opts.output, fileName), formatYaml(rows, schema))
+          sheetRowCounts[sheetName] = rows.length
+        }
+      } else {
+        for (const [sheetName, rows] of nonEmptySheets) {
+          sheetRowCounts[sheetName] = rows.length
         }
       }
 
+      const totalRows = Object.values(sheetRowCounts).reduce((a, b) => a + b, 0)
       emit(opts.json, {
         status: "ok",
         input: opts.input,
         output: opts.output ?? null,
+        sheets: sheetRowCounts,
+        totalRows,
       })
-      if (!opts.json) console.log(chalk.green("Done"))
+      if (!opts.json) {
+        console.log(chalk.green("Done"))
+        const nameWidth = Math.max(
+          ...Object.keys(sheetRowCounts).map((n) => n.length),
+          4,
+        )
+        for (const [sheetName, count] of Object.entries(sheetRowCounts)) {
+          const dest =
+            opts.output && !opts.validate
+              ? chalk.gray(
+                  ` → ${join(opts.output, `${sanitizeSheetName(sheetName)}.yaml`)}`,
+                )
+              : ""
+          console.log(
+            `  ${chalk.cyan(sheetName.padEnd(nameWidth))}  ${count} rows${dest}`,
+          )
+        }
+        if (nonEmptySheets.size > 1) {
+          console.log(chalk.gray(`  ${"─".repeat(nameWidth + 12)}`))
+          const verb = opts.validate ? "validated" : "converted"
+          const destNote =
+            opts.output && !opts.validate ? chalk.gray(` → ${opts.output}`) : ""
+          console.log(
+            `  ${chalk.bold(String(totalRows))} rows ${verb} across ${nonEmptySheets.size} sheets${destNote}`,
+          )
+        }
+      }
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
