@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { existsSync, rmSync } from "node:fs"
+import { existsSync, readFileSync, rmSync } from "node:fs"
 
 function run(...args: string[]) {
   return spawnSync("bun", ["run", "src/cli.ts", ...args], {
@@ -9,14 +9,22 @@ function run(...args: string[]) {
   })
 }
 
-afterEach(() => {
-  for (const f of [
-    "/tmp/cli-out.xlsx",
-    "/tmp/cli-out.yaml",
-    "/tmp/cli-out.errors.json",
-  ]) {
-    if (existsSync(f)) rmSync(f, { recursive: true, force: true })
+function cleanup(...paths: string[]) {
+  for (const p of paths) {
+    if (!existsSync(p)) continue
+    rmSync(p, { recursive: true, force: true })
   }
+}
+
+afterEach(() => {
+  cleanup(
+    "/tmp/cli-out.xlsx",
+    "/tmp/cli-out-dir",
+    "/tmp/cli-out.errors.json",
+    "/tmp/cli-out-dir.errors.json",
+    "/tmp/cli-multi-out",
+    "/tmp/cli-multi-out.errors.json",
+  )
 })
 
 describe("CLI", () => {
@@ -26,6 +34,7 @@ describe("CLI", () => {
     expect(r.stdout).toContain("--schema")
     expect(r.stdout).toContain("--validate")
     expect(r.stdout).toContain("--json")
+    expect(r.stdout).toContain("--sheet-schemas")
   })
 
   test("YAML → Excel succeeds with exit code 0", () => {
@@ -41,17 +50,32 @@ describe("CLI", () => {
     expect(existsSync("/tmp/cli-out.xlsx")).toBe(true)
   })
 
-  test("Excel → YAML succeeds with exit code 0", () => {
+  test("Excel → YAML writes one file per sheet into output directory", () => {
     const r = run(
       "-i",
       "tests/fixtures/data.xlsx",
       "-o",
-      "/tmp/cli-out.yaml",
+      "/tmp/cli-out-dir",
       "--schema",
       "tests/fixtures/schema.yaml",
     )
     expect(r.status).toBe(0)
-    expect(existsSync("/tmp/cli-out.yaml")).toBe(true)
+    // data.xlsx has one sheet named "Sheet1"
+    expect(existsSync("/tmp/cli-out-dir/Sheet1.yaml")).toBe(true)
+  })
+
+  test("Excel → YAML multi-sheet writes one file per sheet", () => {
+    const r = run(
+      "-i",
+      "tests/fixtures/multi-sheet.xlsx",
+      "-o",
+      "/tmp/cli-multi-out",
+      "--schema",
+      "tests/fixtures/schema.yaml",
+    )
+    expect(r.status).toBe(0)
+    expect(existsSync("/tmp/cli-multi-out/People.yaml")).toBe(true)
+    expect(existsSync("/tmp/cli-multi-out/Staff.yaml")).toBe(true)
   })
 
   test("--json outputs machine-readable success object", () => {
@@ -100,17 +124,75 @@ describe("CLI", () => {
     expect(parsed.status).toBe("fatal")
   })
 
-  test("--validate does not write output file", () => {
+  test("--validate does not write output files", () => {
     const r = run(
       "-i",
-      "tests/fixtures/data.xlsx",
+      "tests/fixtures/multi-sheet.xlsx",
       "-o",
-      "/tmp/cli-out.yaml",
+      "/tmp/cli-out-dir",
       "--schema",
       "tests/fixtures/schema.yaml",
       "--validate",
     )
     expect(r.status).toBe(0)
-    expect(existsSync("/tmp/cli-out.yaml")).toBe(false)
+    expect(existsSync("/tmp/cli-out-dir")).toBe(false)
+  })
+
+  test("multi-sheet validation errors include sheet field in errors file", async () => {
+    // Build a 2-sheet xlsx in-memory: ValidSheet has valid data, BrokenSheet has invalid status
+    const ExcelJS = (await import("exceljs")).default
+    const wb = new ExcelJS.Workbook()
+
+    const addSheet = (name: string, rows: unknown[][]) => {
+      const ws = wb.addWorksheet(name)
+      ws.addRow(["Personal Info", null, null, null, null])
+      ws.mergeCells(1, 1, 1, 2)
+      ws.addRow(["Name", "Date of Birth", "Status", "Score", "Verified"])
+      for (const r of rows) ws.addRow(r)
+    }
+
+    addSheet("ValidSheet", [["Alice", null, "Active", 95, true]])
+    addSheet("BrokenSheet", [["Bob", null, "INVALID_STATUS", 70, false]])
+
+    await wb.xlsx.writeFile("/tmp/cli-invalid-multi.xlsx")
+
+    const r = run(
+      "-i",
+      "/tmp/cli-invalid-multi.xlsx",
+      "--schema",
+      "tests/fixtures/schema.yaml",
+      "--validate",
+      "--json",
+    )
+
+    expect(r.status).toBe(1)
+    const parsed = JSON.parse(r.stdout)
+    expect(parsed.status).toBe("error")
+    expect(parsed.errorCount).toBeGreaterThan(0)
+
+    // Read the errors file BEFORE cleanup to verify sheet field is populated
+    const errorsFile = JSON.parse(
+      readFileSync("/tmp/cli-invalid-multi.errors.json", "utf-8"),
+    )
+    expect(errorsFile.errors[0].sheet).toBe("BrokenSheet")
+
+    // Cleanup
+    rmSync("/tmp/cli-invalid-multi.xlsx", { force: true })
+    rmSync("/tmp/cli-invalid-multi.errors.json", { force: true })
+  })
+
+  test("--sheet-schemas emits warning but continues", () => {
+    const r = run(
+      "-i",
+      "tests/fixtures/data.yaml",
+      "-o",
+      "/tmp/cli-out.xlsx",
+      "--schema",
+      "tests/fixtures/schema.yaml",
+      "--sheet-schemas",
+      "Sheet1:schema.yaml",
+    )
+    expect(r.status).toBe(0)
+    expect(r.stderr).toContain("--sheet-schemas is not yet implemented")
   })
 })
