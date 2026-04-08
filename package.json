@@ -1,6 +1,6 @@
 {
   "name": "yaml-converter",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Convert YAML files to Excel and back with schema-driven validation",
   "bin": {

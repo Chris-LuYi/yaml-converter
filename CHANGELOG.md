@@ -1,5 +1,11 @@
 # yaml-converter
 
+## 0.3.1
+
+### Patch Changes
+
+- 7ae3f1e: Fix schema lookup to resolve from CWD instead of input file directory. Fix --version always reporting 0.1.0 — now reads from package.json. Default output path derived from input name when -o is omitted.
+
 ## 0.3.0
 
 ### Minor Changes
