@@ -1,0 +1,19 @@
+name: Auto-merge Release PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  auto-merge:
+    if: github.head_ref == 'changeset-release/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Enable auto-merge for changeset release PR
+        run: gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
