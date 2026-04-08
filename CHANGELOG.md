@@ -1,5 +1,11 @@
 # yaml-converter
 
+## 0.2.4
+
+### Patch Changes
+
+- 2390b9c: Add completion summary: row counts and output paths printed after every successful conversion. JSON mode includes `rows` (YAML→Excel) or `sheets`/`totalRows` (Excel→YAML) fields.
+
 ## 0.2.3
 
 ### Patch Changes
