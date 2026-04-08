@@ -22,12 +22,12 @@ echo ""
 # ── Step 2: Excel → YAML (round-trip) ────────────────────────────────────────
 echo "▶ Step 2: Excel → YAML (round-trip)"
 echo "  Input:  demo/output.xlsx"
-echo "  Output: demo/roundtrip.yaml"
+echo "  Output: demo/roundtrip/{sheet-name}.yaml"
 echo ""
 bun run dev -- \
   -i demo/output.xlsx \
   --schema demo/schema.yaml \
-  -o demo/roundtrip.yaml
+  -o demo/roundtrip
 echo "  Exit code: $?"
 echo ""
 
