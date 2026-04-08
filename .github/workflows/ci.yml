@@ -53,3 +53,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Auto-merge release PR
+        # Runs after changesets creates/updates the PR. The pull_request event
+        # from GITHUB_TOKEN doesn't trigger other workflows (GitHub loop prevention),
+        # so we enable auto-merge here directly while we still have write access.
+        run: |
+          PR=$(gh pr list --head changeset-release/main --json number --jq '.[0].number' 2>/dev/null)
+          if [ -n "$PR" ]; then
+            gh pr merge --auto --merge "$PR" || true
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
