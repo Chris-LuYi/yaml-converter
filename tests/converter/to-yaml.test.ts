@@ -74,12 +74,12 @@ describe("toYamlAll", () => {
     const people = result.get("People")
     expect(people).toBeDefined()
     expect(people).toHaveLength(2)
-    expect(people![0].name).toBe("Alice")
-    expect(people![0].birthdate).toBe("1990-01-15")
+    expect(people?.[0].name).toBe("Alice")
+    expect(people?.[0].birthdate).toBe("1990-01-15")
     const staff = result.get("Staff")
     expect(staff).toBeDefined()
     expect(staff).toHaveLength(2)
-    expect(staff![0].name).toBe("Carol")
+    expect(staff?.[0].name).toBe("Carol")
   })
 
   test("empty sheet produces empty array not absent entry", async () => {
