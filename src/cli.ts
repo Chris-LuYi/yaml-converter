@@ -84,13 +84,11 @@ async function run(opts: ConvertOptions) {
   const ext = opts.input.split(".").pop()?.toLowerCase() ?? ""
   const isYamlInput = ext === "yaml" || ext === "yml"
 
-  // --output is required unless --validate is set
+  // Derive default output when not specified
   if (!opts.validate && !opts.output) {
-    emitFatal(
-      opts.json,
-      "Missing required option: -o, --output <file> (required unless --validate is set)",
-    )
-    process.exit(2)
+    opts.output = isYamlInput
+      ? opts.input.replace(/\.(yaml|yml)$/i, ".xlsx")
+      : opts.input.replace(/\.[^.]+$/, "")
   }
 
   try {
@@ -231,12 +229,9 @@ async function runDirectory(opts: ConvertOptions) {
     process.exit(2)
   }
 
+  // Derive default output: ./data/ → ./data.xlsx
   if (!opts.validate && !opts.output) {
-    emitFatal(
-      opts.json,
-      "Missing required option: -o, --output <file> (required unless --validate is set)",
-    )
-    process.exit(2)
+    opts.output = `${inputDir.replace(/\/+$/, "")}.xlsx`
   }
 
   // Phase 1: parse + validate all files, collect errors and sheet data
