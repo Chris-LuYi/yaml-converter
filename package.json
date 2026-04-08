@@ -1,6 +1,6 @@
 {
   "name": "yaml-converter",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Convert YAML files to Excel and back with schema-driven validation",
   "bin": {
     "yaml-converter": "dist/cli.js"
@@ -30,5 +30,7 @@
     "@types/bun": "latest",
     "typescript": "^5.4.0"
   },
-  "trustedDependencies": ["@biomejs/biome"]
+  "trustedDependencies": [
+    "@biomejs/biome"
+  ]
 }
