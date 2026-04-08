@@ -7,13 +7,12 @@ import type { Schema } from "../types"
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
 
-export async function toExcel(
+function addSheetToWorkbook(
+  wb: ExcelJS.Workbook,
   rows: Record<string, unknown>[],
   schema: Schema,
-  outputPath: string,
-  sheetName = "Sheet1",
-): Promise<void> {
-  const wb = new ExcelJS.Workbook()
+  sheetName: string,
+): void {
   const ws = wb.addWorksheet(sheetName)
 
   const hasGroups = schema.columns.some((c) => c.group)
@@ -61,7 +60,31 @@ export async function toExcel(
       }
     })
   }
+}
 
+export async function toExcel(
+  rows: Record<string, unknown>[],
+  schema: Schema,
+  outputPath: string,
+  sheetName = "Sheet1",
+): Promise<void> {
+  const wb = new ExcelJS.Workbook()
+  addSheetToWorkbook(wb, rows, schema, sheetName)
+  await wb.xlsx.writeFile(outputPath)
+}
+
+export async function toExcelMulti(
+  sheets: Array<{
+    name: string
+    rows: Record<string, unknown>[]
+    schema: Schema
+  }>,
+  outputPath: string,
+): Promise<void> {
+  const wb = new ExcelJS.Workbook()
+  for (const { name, rows, schema } of sheets) {
+    addSheetToWorkbook(wb, rows, schema, name)
+  }
   await wb.xlsx.writeFile(outputPath)
 }
 

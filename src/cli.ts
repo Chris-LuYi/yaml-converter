@@ -1,9 +1,16 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { basename, extname, join } from "node:path"
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
+import { basename, dirname, extname, join } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
 import { Document, isMap, isPair, isScalar, isSeq, parse } from "yaml"
-import { toExcel } from "./converter/to-excel"
+import { toExcel, toExcelMulti } from "./converter/to-excel"
 import { sanitizeSheetName, toYamlAll } from "./converter/to-yaml"
 import { loadSchema } from "./schema/loader"
 import { validateRows } from "./schema/validator"
@@ -24,7 +31,10 @@ program
   .version("0.1.0")
   .requiredOption("-i, --input <file>", "Input file path")
   .option("-o, --output <file>", "Output file path (directory for Excel→YAML)")
-  .requiredOption("--schema <file>", "Schema YAML file path")
+  .option(
+    "--schema <file>",
+    "Schema YAML file path (default: schema.yaml next to input)",
+  )
   .option(
     "--validate",
     "Validate only, do not write output; errors file still written",
@@ -57,8 +67,17 @@ async function run(opts: ConvertOptions) {
     emitFatal(opts.json, `Input file not found: ${opts.input}`)
     process.exit(2)
   }
-  if (!existsSync(opts.schema)) {
-    emitFatal(opts.json, `Schema file not found: ${opts.schema}`)
+
+  // Directory input → multi-YAML-to-Excel mode
+  if (statSync(opts.input).isDirectory()) {
+    await runDirectory(opts)
+    return
+  }
+
+  // Resolve schema: explicit flag > schema.yaml next to input file
+  const resolvedSchema = opts.schema ?? join(dirname(opts.input), "schema.yaml")
+  if (!existsSync(resolvedSchema)) {
+    emitFatal(opts.json, `Schema file not found: ${resolvedSchema}`)
     process.exit(2)
   }
 
@@ -75,7 +94,7 @@ async function run(opts: ConvertOptions) {
   }
 
   try {
-    const schema = loadSchema(opts.schema)
+    const schema = loadSchema(resolvedSchema)
 
     if (isYamlInput) {
       // YAML → Excel (single file output, unchanged)
@@ -191,6 +210,131 @@ async function run(opts: ConvertOptions) {
     const message = err instanceof Error ? err.message : String(err)
     emitFatal(opts.json, message)
     process.exit(2)
+  }
+}
+
+async function runDirectory(opts: ConvertOptions) {
+  const inputDir = opts.input
+
+  const yamlFiles = readdirSync(inputDir)
+    .filter(
+      (f) =>
+        /\.(yaml|yml)$/i.test(f) &&
+        f !== "schema.yaml" &&
+        !f.endsWith("-schema.yaml"),
+    )
+    .sort()
+    .map((f) => join(inputDir, f))
+
+  if (yamlFiles.length === 0) {
+    emitFatal(opts.json, `No YAML files found in directory: ${inputDir}`)
+    process.exit(2)
+  }
+
+  if (!opts.validate && !opts.output) {
+    emitFatal(
+      opts.json,
+      "Missing required option: -o, --output <file> (required unless --validate is set)",
+    )
+    process.exit(2)
+  }
+
+  // Phase 1: parse + validate all files, collect errors and sheet data
+  const allErrors: ValidationError[] = []
+  const sheetData: Array<{
+    name: string
+    rows: Record<string, unknown>[]
+    schema: ReturnType<typeof loadSchema>
+  }> = []
+
+  for (const yamlFilePath of yamlFiles) {
+    const baseName = basename(yamlFilePath, extname(yamlFilePath))
+
+    // Per-file schema override: {baseName}-schema.yaml in the same dir
+    const perFileSchemaPath = join(inputDir, `${baseName}-schema.yaml`)
+    const fallbackSchemaPath = opts.schema ?? join(inputDir, "schema.yaml")
+    const schemaPath = existsSync(perFileSchemaPath)
+      ? perFileSchemaPath
+      : fallbackSchemaPath
+
+    if (!existsSync(schemaPath)) {
+      emitFatal(
+        opts.json,
+        `Schema not found for ${baseName}.yaml: tried ${perFileSchemaPath} and ${fallbackSchemaPath}`,
+      )
+      process.exit(2)
+    }
+
+    try {
+      const schema = loadSchema(schemaPath)
+      const rows = parse(readFileSync(yamlFilePath, "utf-8")) as Record<
+        string,
+        unknown
+      >[]
+      const errors = validateRows(rows, schema).map((e) => ({
+        ...e,
+        sheet: baseName,
+      }))
+      allErrors.push(...errors)
+      sheetData.push({ name: baseName, rows, schema })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      emitFatal(opts.json, `Error processing ${baseName}.yaml: ${message}`)
+      process.exit(2)
+    }
+  }
+
+  if (allErrors.length > 0) {
+    const errorPath =
+      opts.errorOutput ?? `${opts.output ?? opts.input}.errors.json`
+    writeErrors(errorPath, opts.input, allErrors)
+    emitErrors(opts, allErrors, errorPath)
+    process.exit(1)
+  }
+
+  // Phase 2: write output
+  if (!opts.validate && opts.output) {
+    await toExcelMulti(sheetData, opts.output)
+  }
+
+  const sheetRowCounts: Record<string, number> = {}
+  for (const { name, rows } of sheetData) {
+    sheetRowCounts[name] = rows.length
+  }
+  const totalRows = Object.values(sheetRowCounts).reduce((a, b) => a + b, 0)
+
+  emit(opts.json, {
+    status: "ok",
+    input: opts.input,
+    output: opts.output ?? null,
+    sheets: sheetRowCounts,
+    totalRows,
+  })
+
+  if (!opts.json) {
+    console.log(chalk.green("Done"))
+    const nameWidth = Math.max(
+      ...Object.keys(sheetRowCounts).map((n) => n.length),
+      4,
+    )
+    for (const [sheetName, count] of Object.entries(sheetRowCounts)) {
+      const dest =
+        opts.output && !opts.validate
+          ? chalk.gray(` → ${opts.output} (sheet: ${sheetName})`)
+          : ""
+      console.log(
+        `  ${chalk.cyan(sheetName.padEnd(nameWidth))}  ${count} rows${dest}`,
+      )
+    }
+    if (sheetData.length > 1) {
+      console.log(chalk.gray(`  ${"─".repeat(nameWidth + 12)}`))
+      const verb = opts.validate ? "validated" : "converted"
+      const destNote =
+        opts.output && !opts.validate ? chalk.gray(` → ${opts.output}`) : ""
+      console.log(
+        `  ${chalk.bold(String(totalRows))} rows ${verb} across ${sheetData.length} files${destNote}`,
+      )
+    }
   }
 }
 

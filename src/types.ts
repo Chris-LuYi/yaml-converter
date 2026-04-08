@@ -34,7 +34,7 @@ export interface ErrorOutput {
 export interface ConvertOptions {
   input: string
   output?: string
-  schema: string
+  schema?: string
   validate?: boolean
   errorOutput?: string
   json?: boolean
