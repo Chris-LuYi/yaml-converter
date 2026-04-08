@@ -20,6 +20,7 @@ export interface ValidationError {
   expected: string
   actual: unknown
   message: string
+  sheet?: string // populated for multi-sheet conversions
 }
 
 export interface ErrorOutput {
@@ -37,4 +38,5 @@ export interface ConvertOptions {
   validate?: boolean
   errorOutput?: string
   json?: boolean
+  sheetSchemas?: string // placeholder — not yet implemented
 }
