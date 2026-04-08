@@ -6,7 +6,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs"
-import { basename, dirname, extname, join } from "node:path"
+import { basename, extname, join } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
 import { Document, isMap, isPair, isScalar, isSeq, parse } from "yaml"
@@ -74,8 +74,8 @@ async function run(opts: ConvertOptions) {
     return
   }
 
-  // Resolve schema: explicit flag > schema.yaml next to input file
-  const resolvedSchema = opts.schema ?? join(dirname(opts.input), "schema.yaml")
+  // Resolve schema: explicit flag > schema.yaml in CWD (where the CLI is run)
+  const resolvedSchema = opts.schema ?? "schema.yaml"
   if (!existsSync(resolvedSchema)) {
     emitFatal(opts.json, `Schema file not found: ${resolvedSchema}`)
     process.exit(2)
@@ -245,9 +245,9 @@ async function runDirectory(opts: ConvertOptions) {
   for (const yamlFilePath of yamlFiles) {
     const baseName = basename(yamlFilePath, extname(yamlFilePath))
 
-    // Per-file schema override: {baseName}-schema.yaml in the same dir
-    const perFileSchemaPath = join(inputDir, `${baseName}-schema.yaml`)
-    const fallbackSchemaPath = opts.schema ?? join(inputDir, "schema.yaml")
+    // Per-file schema override: {baseName}-schema.yaml in CWD
+    const perFileSchemaPath = `${baseName}-schema.yaml`
+    const fallbackSchemaPath = opts.schema ?? "schema.yaml"
     const schemaPath = existsSync(perFileSchemaPath)
       ? perFileSchemaPath
       : fallbackSchemaPath
