@@ -1,0 +1,56 @@
+columns:
+  # App Info group
+  - field: app_name
+    header: App Name
+    group: App Info
+    type: string
+    required: true
+
+  - field: remote_name
+    header: Remote Name
+    group: App Info
+    type: string
+    required: true
+
+  - field: team
+    header: Team
+    group: App Info
+    type: string
+    required: true
+
+  # Technical group
+  - field: framework
+    header: Framework
+    group: Technical
+    type: options
+    options: [React, Vue, Angular, Svelte]
+    required: true
+
+  - field: host_url
+    header: Host URL
+    group: Technical
+    type: string
+
+  - field: port
+    header: Dev Port
+    group: Technical
+    type: number
+
+  # Lifecycle group
+  - field: status
+    header: Status
+    group: Lifecycle
+    type: options
+    options: [Active, Deprecated, Beta, Planned]
+    required: true
+
+  - field: deploy_date
+    header: Deploy Date
+    group: Lifecycle
+    type: date
+    format: YYYY-MM-DD
+
+  - field: version
+    header: Version
+    group: Lifecycle
+    type: string
