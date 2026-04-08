@@ -10,6 +10,7 @@ import { basename, extname, join } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
 import { Document, isMap, isPair, isScalar, isSeq, parse } from "yaml"
+import { version } from "../package.json"
 import { toExcel, toExcelMulti } from "./converter/to-excel"
 import { sanitizeSheetName, toYamlAll } from "./converter/to-yaml"
 import { loadSchema } from "./schema/loader"
@@ -28,7 +29,7 @@ program
   .description(
     "Convert YAML files to Excel and back with schema-driven validation",
   )
-  .version("0.1.0")
+  .version(version)
   .requiredOption("-i, --input <file>", "Input file path")
   .option("-o, --output <file>", "Output file path (directory for Excel→YAML)")
   .option(
