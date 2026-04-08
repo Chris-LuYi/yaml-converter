@@ -1,5 +1,11 @@
 # yaml-converter
 
+## 0.2.2
+
+### Patch Changes
+
+- 0f7ebf8: Fix Excel→YAML output fidelity: quote date fields and semver-like version strings, add blank lines between entries. Fix fatal errors (missing file, schema, etc.) silently swallowed in non-JSON mode.
+
 ## 0.2.1
 
 ### Patch Changes
