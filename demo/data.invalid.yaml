@@ -1,0 +1,17 @@
+- app_name: Broken MFE A
+  remote_name: broken_a
+  team: Platform
+  framework: React
+  status: Unknown
+
+- app_name: Broken MFE B
+  remote_name: broken_b
+  team: Analytics
+  framework: Vue
+  deploy_date: "15/01/2024"
+  status: Active
+
+- app_name: Broken MFE C
+  remote_name: broken_c
+  team: Core
+  status: Beta
