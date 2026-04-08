@@ -1,5 +1,11 @@
 # yaml-converter
 
+## 0.2.3
+
+### Patch Changes
+
+- 584680c: Use input YAML filename stem as Excel sheet name so round-trips produce the original filename (e.g. data.yaml → Excel sheet "data" → data.yaml)
+
 ## 0.2.2
 
 ### Patch Changes
