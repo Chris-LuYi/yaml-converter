@@ -1,0 +1,40 @@
+- app_name: Shell
+  remote_name: shell
+  team: Platform
+  framework: React
+  host_url: https://shell.example.com
+  port: 3000
+  status: Active
+  deploy_date: "2024-03-01"
+  version: "2.1.0"
+
+- app_name: Auth MFE
+  remote_name: auth
+  team: Identity
+  framework: React
+  host_url: https://auth.example.com
+  port: 3001
+  status: Active
+  deploy_date: "2024-02-15"
+  version: "1.4.2"
+
+- app_name: Dashboard MFE
+  remote_name: dashboard
+  team: Analytics
+  framework: Vue
+  port: 3002
+  status: Beta
+  version: "0.9.0"
+
+- app_name: Legacy Nav
+  remote_name: legacy_nav
+  team: Platform
+  framework: Angular
+  status: Deprecated
+
+- app_name: Settings MFE
+  remote_name: settings
+  team: Core
+  framework: Svelte
+  port: 3004
+  status: Planned
