@@ -11,9 +11,10 @@ export async function toExcel(
   rows: Record<string, unknown>[],
   schema: Schema,
   outputPath: string,
+  sheetName = "Sheet1",
 ): Promise<void> {
   const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet("Sheet1")
+  const ws = wb.addWorksheet(sheetName)
 
   const hasGroups = schema.columns.some((c) => c.group)
   const headerRowNum = hasGroups ? 2 : 1

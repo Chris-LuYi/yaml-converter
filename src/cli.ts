@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { basename, extname, join } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
 import { Document, isMap, isPair, isScalar, isSeq, parse } from "yaml"
@@ -91,7 +91,8 @@ async function run(opts: ConvertOptions) {
       }
 
       if (!opts.validate && opts.output) {
-        await toExcel(rows, schema, opts.output)
+        const sheetName = basename(opts.input, extname(opts.input))
+        await toExcel(rows, schema, opts.output, sheetName)
       }
 
       emit(opts.json, {
