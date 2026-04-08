@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { existsSync, unlinkSync } from "node:fs"
+import { existsSync, rmSync } from "node:fs"
 
 function run(...args: string[]) {
   return spawnSync("bun", ["run", "src/cli.ts", ...args], {
@@ -15,7 +15,7 @@ afterEach(() => {
     "/tmp/cli-out.yaml",
     "/tmp/cli-out.errors.json",
   ]) {
-    if (existsSync(f)) unlinkSync(f)
+    if (existsSync(f)) rmSync(f, { recursive: true, force: true })
   }
 })
 
