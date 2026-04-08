@@ -7,19 +7,40 @@ import type { Schema } from "../types"
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
 
+export function sanitizeSheetName(name: string): string {
+  return name.replace(/[/\\:*?"<>|]/g, "_")
+}
+
 export async function toYaml(
   inputPath: string,
   schema: Schema,
 ): Promise<Record<string, unknown>[]> {
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.readFile(inputPath)
-  const ws = wb.worksheets[0]
+  return convertSheet(wb.worksheets[0], schema)
+}
 
+export async function toYamlAll(
+  inputPath: string,
+  schema: Schema,
+): Promise<Map<string, Record<string, unknown>[]>> {
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.readFile(inputPath)
+  const result = new Map<string, Record<string, unknown>[]>()
+  for (const ws of wb.worksheets) {
+    result.set(ws.name, convertSheet(ws, schema))
+  }
+  return result
+}
+
+function convertSheet(
+  ws: ExcelJS.Worksheet,
+  schema: Schema,
+): Record<string, unknown>[] {
   const schemaHeaders = new Set(schema.columns.map((c) => c.header))
   const headerRowNum = detectHeaderRow(ws, schemaHeaders)
   const dataStartRow = headerRowNum + 1
 
-  // Build colIndex → field name map from header row
   const colIndexToField = new Map<number, string>()
   const headerRow = ws.getRow(headerRowNum)
   ;(headerRow.values as unknown[]).forEach((val, idx) => {
