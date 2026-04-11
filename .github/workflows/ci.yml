@@ -56,13 +56,14 @@ jobs:
       - name: Auto-merge release PR
         # Runs after changesets creates/updates the PR. The pull_request event
         # from GITHUB_TOKEN doesn't trigger other workflows (GitHub loop prevention),
-        # so we enable auto-merge here directly while we still have write access.
+        # so we merge directly here. --auto requires "Allow auto-merge" repo setting;
+        # direct merge works as long as CI already passed (release job needs: ci).
         # Retry loop: GitHub API may not expose the new PR immediately after creation.
         run: |
           for i in 1 2 3 4 5; do
             PR=$(gh pr list --head changeset-release/main --json number --jq '.[0].number' 2>/dev/null)
             if [ -n "$PR" ]; then
-              gh pr merge --auto --merge "$PR" || true
+              gh pr merge --merge "$PR" || true
               break
             fi
             echo "PR not found yet, retrying in 5s (attempt $i/5)..."
