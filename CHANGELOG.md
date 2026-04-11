@@ -1,5 +1,15 @@
 # yaml-converter
 
+## 0.4.0
+
+### Minor Changes
+
+- f36649f: Add `--recursive`, `--merge`, and `--split-by` flags for multi-project agent pipeline support. Merge flattens a directory of YAML files into one Excel sheet with an injected tag column; split reverses the operation by grouping rows back into separate YAML files by field value.
+
+### Patch Changes
+
+- 9b37178: Fix Excel cells with rich text formatting (bold, colors, mixed styles) or formula results being read as "[object Object]" instead of their actual string value. Affects any cell with character-level formatting or a computed formula.
+
 ## 0.3.1
 
 ### Patch Changes
