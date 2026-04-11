@@ -47,7 +47,7 @@ program
   .option("-o, --output <file>", "Output file path (directory for Excel→YAML)")
   .option(
     "--schema <file>",
-    "Schema YAML file path (default: schema.yaml next to input)",
+    "Schema YAML file path (default: schema.yaml in working directory)",
   )
   .option(
     "--validate",
