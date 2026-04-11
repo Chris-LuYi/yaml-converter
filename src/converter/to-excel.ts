@@ -2,33 +2,100 @@ import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
 import utc from "dayjs/plugin/utc"
 import ExcelJS from "exceljs"
-import type { Schema } from "../types"
+import type { ExcelStyle, Schema } from "../types"
 
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
+
+// ── Style defaults (overridden by yaml-converter.config.yaml) ─────────────────
+const DEFAULT_STYLE: Required<ExcelStyle> = {
+  fontName:        "Public Sans",
+  fontSizeHeader:  11,
+  fontSizeData:    10,
+  colorGroupBg:    "1F4E79",  // deep navy   — group header row
+  colorGroupFg:    "FFFFFF",
+  colorHeaderBg:   "2E75B6",  // medium blue — field header row
+  colorHeaderFg:   "FFFFFF",
+  colMinWidth:     8,
+  colMaxWidth:     50,
+  rowHeightHeader: 20,
+  rowHeightData:   18,
+}
+
+function resolveStyle(overrides?: ExcelStyle): Required<ExcelStyle> {
+  return { ...DEFAULT_STYLE, ...overrides }
+}
+
+function cellText(value: unknown): string {
+  if (value === null || value === undefined) return ""
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  return String(value)
+}
+
+function clampWidth(raw: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, raw))
+}
+
+function styleHeaderCell(
+  cell: ExcelJS.Cell,
+  bgArgb: string,
+  fgArgb: string,
+  fontName: string,
+  fontSize: number,
+): void {
+  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } }
+  cell.font = { name: fontName, size: fontSize, bold: true, color: { argb: fgArgb } }
+  cell.alignment = { vertical: "middle", horizontal: "center", wrapText: false }
+}
 
 function addSheetToWorkbook(
   wb: ExcelJS.Workbook,
   rows: Record<string, unknown>[],
   schema: Schema,
   sheetName: string,
+  style: Required<ExcelStyle>,
 ): void {
   const ws = wb.addWorksheet(sheetName)
 
   const hasGroups = schema.columns.some((c) => c.group)
   const headerRowNum = hasGroups ? 2 : 1
+
+  // ── Group header row ─────────────────────────────────────────────────────────
   if (hasGroups) {
     addGroupHeaderRow(ws, schema)
+    ws.getRow(1).height = style.rowHeightHeader
+    ws.getRow(1).eachCell((cell) => {
+      if (cell.value) styleHeaderCell(cell, style.colorGroupBg, style.colorGroupFg, style.fontName, style.fontSizeHeader)
+    })
   }
 
-  ws.addRow(schema.columns.map((c) => c.header))
+  // ── Field header row ─────────────────────────────────────────────────────────
+  const headerRow = ws.addRow(schema.columns.map((c) => c.header))
+  headerRow.height = style.rowHeightHeader
+  headerRow.eachCell((cell) =>
+    styleHeaderCell(cell, style.colorHeaderBg, style.colorHeaderFg, style.fontName, style.fontSizeHeader),
+  )
+
   ws.views = [{ state: "frozen", ySplit: headerRowNum }]
 
+  const lastCol = ws.getColumn(schema.columns.length).letter
+  ws.autoFilter = `A${headerRowNum}:${lastCol}${headerRowNum}`
+
+  // ── Track max content width per column ───────────────────────────────────────
+  const colWidths = schema.columns.map((c) =>
+    clampWidth(c.header.length * 1.15 + 2, style.colMinWidth, style.colMaxWidth),
+  )
+
+  // ── Data rows ────────────────────────────────────────────────────────────────
   for (const row of rows) {
     const excelRow = ws.addRow([])
+    excelRow.height = style.rowHeightData
     schema.columns.forEach((col, colIdx) => {
       const cell = excelRow.getCell(colIdx + 1)
       const value = row[col.field]
+
+      cell.font = { name: style.fontName, size: style.fontSizeData }
+      cell.alignment = { vertical: "middle", wrapText: false }
 
       if (value === undefined || value === null) {
         cell.value = null
@@ -40,15 +107,20 @@ function addSheetToWorkbook(
         if (date.isValid()) {
           cell.value = date.toDate()
           cell.numFmt = toExcelDateFmt(col.format ?? "YYYY-MM-DD")
+          colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(value.length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
         } else {
-          cell.value = value // preserve original string rather than silently dropping
+          cell.value = value
+          colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(value.length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
         }
       } else if (col.type === "number") {
         cell.value = typeof value === "number" ? value : Number(value)
+        colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(cellText(value).length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
       } else if (col.type === "boolean") {
         cell.value = Boolean(value)
+        colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(cellText(value).length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
       } else {
         cell.value = String(value)
+        colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(String(value).length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
       }
 
       if (col.type === "options" && col.options) {
@@ -60,6 +132,11 @@ function addSheetToWorkbook(
       }
     })
   }
+
+  // ── Apply column widths ──────────────────────────────────────────────────────
+  schema.columns.forEach((_, idx) => {
+    ws.getColumn(idx + 1).width = colWidths[idx]
+  })
 }
 
 export async function toExcel(
@@ -67,9 +144,10 @@ export async function toExcel(
   schema: Schema,
   outputPath: string,
   sheetName = "Sheet1",
+  styleOverrides?: ExcelStyle,
 ): Promise<void> {
   const wb = new ExcelJS.Workbook()
-  addSheetToWorkbook(wb, rows, schema, sheetName)
+  addSheetToWorkbook(wb, rows, schema, sheetName, resolveStyle(styleOverrides))
   await wb.xlsx.writeFile(outputPath)
 }
 
@@ -80,10 +158,12 @@ export async function toExcelMulti(
     schema: Schema
   }>,
   outputPath: string,
+  styleOverrides?: ExcelStyle,
 ): Promise<void> {
   const wb = new ExcelJS.Workbook()
+  const style = resolveStyle(styleOverrides)
   for (const { name, rows, schema } of sheets) {
-    addSheetToWorkbook(wb, rows, schema, name)
+    addSheetToWorkbook(wb, rows, schema, name, style)
   }
   await wb.xlsx.writeFile(outputPath)
 }
@@ -118,7 +198,6 @@ function addGroupHeaderRow(ws: ExcelJS.Worksheet, schema: Schema) {
 }
 
 function toExcelDateFmt(fmt: string): string {
-  // Map dayjs tokens to Excel numFmt tokens (common subset)
   return fmt
     .replace(/YYYY/g, "yyyy")
     .replace(/YY/g, "yy")

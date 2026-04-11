@@ -1,0 +1,27 @@
+columns:
+  - field: app_name
+    header: App Name
+    type: string
+    required: true
+
+  - field: remote_name
+    header: Remote Name
+    type: string
+    required: true
+
+  - field: team
+    header: Team
+    type: string
+    required: true
+
+  - field: framework
+    header: Framework
+    type: options
+    options: [React, Vue, Angular, Svelte]
+    required: true
+
+  - field: status
+    header: Status
+    type: options
+    options: [Active, Deprecated, Beta, Planned]
+    required: true

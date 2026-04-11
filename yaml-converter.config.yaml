@@ -1,0 +1,16 @@
+# yaml-converter configuration
+# All settings are optional — omit any key to use the built-in default.
+
+excel:
+  style:
+    fontName: Public Sans       # font must be installed on machines opening the file
+    fontSizeHeader: 11          # pt — group + field header rows
+    fontSizeData: 10            # pt — data rows
+    colorGroupBg: "1F4E79"     # ARGB hex (no #) — group header background (deep navy)
+    colorGroupFg: "FFFFFF"     # group header foreground
+    colorHeaderBg: "2E75B6"   # field header background (medium blue)
+    colorHeaderFg: "FFFFFF"   # field header foreground
+    colMinWidth: 8              # minimum column width (Excel units)
+    colMaxWidth: 50             # maximum column width (Excel units)
+    rowHeightHeader: 20         # pt — header row height
+    rowHeightData: 18           # pt — data row height

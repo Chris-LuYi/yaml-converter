@@ -38,3 +38,51 @@
   framework: Svelte
   port: 3004
   status: Planned
+
+- app_name: "Reports & Analytics"
+  remote_name: reports
+  team: "Data, Insights"
+  framework: Vue
+  host_url: "https://reports.example.com/v2?env=prod&region=us-east"
+  port: 3005
+  status: Beta
+  deploy_date: "2024-11-20"
+  version: "1.0.0-beta.3"
+
+- app_name: "O'Brien's Portal"
+  remote_name: obrien_portal
+  team: "Platform"
+  framework: React
+  host_url: "https://portal.example.com"
+  port: 3006
+  status: Active
+  deploy_date: "2025-01-08"
+  version: "3.2.1"
+
+- app_name: "Notifications (Push/Pull)"
+  remote_name: notifications
+  team: "Core"
+  framework: React
+  host_url: "https://notify.example.com"
+  port: 3007
+  status: Active
+  deploy_date: "2025-03-15"
+  version: "2.0.0"
+
+- app_name: "多语言 i18n MFE"
+  remote_name: i18n_mfe
+  team: "Globalisation"
+  framework: Vue
+  port: 3008
+  status: Planned
+  version: "0.1.0"
+
+- app_name: 'Monitor "Live" Feed'
+  remote_name: monitor_live
+  team: '"Dev" Experience'
+  framework: React
+  host_url: "https://monitor.example.com"
+  port: 3009
+  status: Active
+  deploy_date: "2025-04-01"
+  version: "1.1.0"

@@ -181,6 +181,36 @@ describe("CLI", () => {
     rmSync("/tmp/cli-invalid-multi.errors.json", { force: true })
   })
 
+  test("strings with embedded double-quotes round-trip YAML → Excel → YAML", () => {
+    const xlsx = "/tmp/cli-special-chars.xlsx"
+    const outDir = "/tmp/cli-special-chars-out"
+    try {
+      // YAML → Excel
+      const toExcel = run(
+        "-i", "tests/fixtures/special-chars.yaml",
+        "-o", xlsx,
+        "--schema", "tests/fixtures/special-chars-schema.yaml",
+      )
+      expect(toExcel.status).toBe(0)
+
+      // Excel → YAML
+      const toYaml = run(
+        "-i", xlsx,
+        "-o", outDir,
+        "--schema", "tests/fixtures/special-chars-schema.yaml",
+      )
+      expect(toYaml.status).toBe(0)
+
+      const yaml = readFileSync(`${outDir}/special-chars.yaml`, "utf-8")
+      expect(yaml).toContain('Monitor "Live" Feed')
+      expect(yaml).toContain('"Dev" Experience')
+      expect(yaml).toContain("O'Brien's Portal")
+      expect(yaml).toContain("Reports & Analytics")
+    } finally {
+      cleanup(xlsx, outDir)
+    }
+  })
+
   test("--sheet-schemas emits warning but continues", () => {
     const r = run(
       "-i",

@@ -31,6 +31,26 @@ export interface ErrorOutput {
   errors: ValidationError[]
 }
 
+export interface ExcelStyle {
+  fontName?: string
+  fontSizeHeader?: number
+  fontSizeData?: number
+  colorGroupBg?: string   // ARGB hex, e.g. "1F4E79"
+  colorGroupFg?: string
+  colorHeaderBg?: string
+  colorHeaderFg?: string
+  colMinWidth?: number
+  colMaxWidth?: number
+  rowHeightHeader?: number
+  rowHeightData?: number
+}
+
+export interface AppConfig {
+  excel?: {
+    style?: ExcelStyle
+  }
+}
+
 export interface ConvertOptions {
   input: string
   output?: string

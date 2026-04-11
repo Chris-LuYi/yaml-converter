@@ -9,26 +9,31 @@ import {
 import { basename, extname, join, relative } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
-import {
-  Document,
-  isMap,
-  isPair,
-  isScalar,
-  isSeq,
-  parse,
-  stringify,
-} from "yaml"
+import { Document, parse, stringify } from "yaml"
 import { version } from "../package.json"
 import { toExcel, toExcelMulti } from "./converter/to-excel"
 import { sanitizeSheetName, toYamlAll } from "./converter/to-yaml"
 import { loadSchema } from "./schema/loader"
 import { validateRows } from "./schema/validator"
 import type {
+  AppConfig,
   ConvertOptions,
   ErrorOutput,
+  ExcelStyle,
   Schema,
   ValidationError,
 } from "./types"
+
+const CONFIG_FILE = "yaml-converter.config.yaml"
+
+function loadConfig(): AppConfig {
+  if (!existsSync(CONFIG_FILE)) return {}
+  try {
+    return (parse(readFileSync(CONFIG_FILE, "utf-8")) as AppConfig) ?? {}
+  } catch {
+    return {}
+  }
+}
 
 const program = new Command()
 
@@ -88,6 +93,9 @@ program
 program.parseAsync(process.argv).catch(() => process.exit(2))
 
 async function run(opts: ConvertOptions) {
+  const config = loadConfig()
+  const style: ExcelStyle | undefined = config.excel?.style
+
   if (opts.sheetSchemas) {
     console.error(
       chalk.yellow("--sheet-schemas is not yet implemented, ignored"),
@@ -107,7 +115,7 @@ async function run(opts: ConvertOptions) {
 
   // Directory input → multi-YAML-to-Excel mode
   if (statSync(opts.input).isDirectory()) {
-    await runDirectory(opts)
+    await runDirectory(opts, style)
     return
   }
 
@@ -146,7 +154,7 @@ async function run(opts: ConvertOptions) {
 
       if (!opts.validate && opts.output) {
         const sheetName = basename(opts.input, extname(opts.input))
-        await toExcel(rows, schema, opts.output, sheetName)
+        await toExcel(rows, schema, opts.output, sheetName, style)
       }
 
       emit(opts.json, {
@@ -313,7 +321,7 @@ function dropFieldFromRows(
 
 // ─── Directory mode (YAML folder → Excel) ────────────────────────────────────
 
-async function runDirectory(opts: ConvertOptions) {
+async function runDirectory(opts: ConvertOptions, style?: ExcelStyle) {
   const inputDir = opts.input
 
   if (opts.merge && !opts.tagField) {
@@ -413,7 +421,7 @@ async function runDirectory(opts: ConvertOptions) {
     const sheetName = sanitizeSheetName(basename(inputDir.replace(/\/+$/, "")))
 
     if (!opts.validate && opts.output) {
-      await toExcel(mergedRows, taggedSchema, opts.output, sheetName)
+      await toExcel(mergedRows, taggedSchema, opts.output, sheetName, style)
     }
 
     emit(opts.json, {
@@ -436,6 +444,7 @@ async function runDirectory(opts: ConvertOptions) {
       await toExcelMulti(
         sheetData.map((s) => ({ ...s, name: sanitizeSheetName(s.name) })),
         opts.output,
+        style,
       )
     }
 
@@ -651,40 +660,11 @@ function deriveErrorPath(opts: ConvertOptions, isMultiSheet: boolean): string {
 }
 
 /**
- * Serialize rows to YAML with schema-aware quoting and blank lines between entries.
- * - date fields: always QUOTE_DOUBLE (cross-parser safety for YAML 1.1 consumers)
- * - strings matching digits+dots (semver-like): QUOTE_DOUBLE to preserve intent
- * - blank line between each array entry for readability
+ * Serialize rows to YAML with blank lines between each array entry for readability.
+ * Quoting style is left to the yaml library (YAML 1.2 — no automatic date coercion).
  */
-function formatYaml(rows: Record<string, unknown>[], schema: Schema): string {
-  const dateFields = new Set(
-    schema.columns.filter((c) => c.type === "date").map((c) => c.field),
-  )
-
-  const parts = rows.map((row) => {
-    const doc = new Document([row])
-    const seq = doc.contents
-    if (isSeq(seq)) {
-      for (const item of seq.items) {
-        if (isMap(item)) {
-          for (const pair of item.items) {
-            if (isPair(pair) && isScalar(pair.key) && isScalar(pair.value)) {
-              const fieldName = String(pair.key.value)
-              const val = pair.value.value
-              if (
-                typeof val === "string" &&
-                (dateFields.has(fieldName) || /^\d+(\.\d+)+$/.test(val))
-              ) {
-                pair.value.type = "QUOTE_DOUBLE"
-              }
-            }
-          }
-        }
-      }
-    }
-    return doc.toString().trimEnd()
-  })
-
+function formatYaml(rows: Record<string, unknown>[], _schema: Schema): string {
+  const parts = rows.map((row) => new Document([row]).toString().trimEnd())
   return `${parts.join("\n\n")}\n`
 }
 
