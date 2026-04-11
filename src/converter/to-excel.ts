@@ -9,17 +9,17 @@ dayjs.extend(utc)
 
 // ── Style defaults (overridden by yaml-converter.config.yaml) ─────────────────
 const DEFAULT_STYLE: Required<ExcelStyle> = {
-  fontName:        "Public Sans",
-  fontSizeHeader:  11,
-  fontSizeData:    10,
-  colorGroupBg:    "1F4E79",  // deep navy   — group header row
-  colorGroupFg:    "FFFFFF",
-  colorHeaderBg:   "2E75B6",  // medium blue — field header row
-  colorHeaderFg:   "FFFFFF",
-  colMinWidth:     8,
-  colMaxWidth:     50,
+  fontName: "Public Sans",
+  fontSizeHeader: 11,
+  fontSizeData: 10,
+  colorGroupBg: "1F4E79", // deep navy   — group header row
+  colorGroupFg: "FFFFFF",
+  colorHeaderBg: "2E75B6", // medium blue — field header row
+  colorHeaderFg: "FFFFFF",
+  colMinWidth: 8,
+  colMaxWidth: 50,
   rowHeightHeader: 20,
-  rowHeightData:   18,
+  rowHeightData: 18,
 }
 
 function resolveStyle(overrides?: ExcelStyle): Required<ExcelStyle> {
@@ -44,7 +44,12 @@ function styleHeaderCell(
   fontSize: number,
 ): void {
   cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } }
-  cell.font = { name: fontName, size: fontSize, bold: true, color: { argb: fgArgb } }
+  cell.font = {
+    name: fontName,
+    size: fontSize,
+    bold: true,
+    color: { argb: fgArgb },
+  }
   cell.alignment = { vertical: "middle", horizontal: "center", wrapText: false }
 }
 
@@ -65,7 +70,14 @@ function addSheetToWorkbook(
     addGroupHeaderRow(ws, schema)
     ws.getRow(1).height = style.rowHeightHeader
     ws.getRow(1).eachCell((cell) => {
-      if (cell.value) styleHeaderCell(cell, style.colorGroupBg, style.colorGroupFg, style.fontName, style.fontSizeHeader)
+      if (cell.value)
+        styleHeaderCell(
+          cell,
+          style.colorGroupBg,
+          style.colorGroupFg,
+          style.fontName,
+          style.fontSizeHeader,
+        )
     })
   }
 
@@ -73,7 +85,13 @@ function addSheetToWorkbook(
   const headerRow = ws.addRow(schema.columns.map((c) => c.header))
   headerRow.height = style.rowHeightHeader
   headerRow.eachCell((cell) =>
-    styleHeaderCell(cell, style.colorHeaderBg, style.colorHeaderFg, style.fontName, style.fontSizeHeader),
+    styleHeaderCell(
+      cell,
+      style.colorHeaderBg,
+      style.colorHeaderFg,
+      style.fontName,
+      style.fontSizeHeader,
+    ),
   )
 
   ws.views = [{ state: "frozen", ySplit: headerRowNum }]
@@ -83,7 +101,11 @@ function addSheetToWorkbook(
 
   // ── Track max content width per column ───────────────────────────────────────
   const colWidths = schema.columns.map((c) =>
-    clampWidth(c.header.length * 1.15 + 2, style.colMinWidth, style.colMaxWidth),
+    clampWidth(
+      c.header.length * 1.15 + 2,
+      style.colMinWidth,
+      style.colMaxWidth,
+    ),
   )
 
   // ── Data rows ────────────────────────────────────────────────────────────────
@@ -107,20 +129,55 @@ function addSheetToWorkbook(
         if (date.isValid()) {
           cell.value = date.toDate()
           cell.numFmt = toExcelDateFmt(col.format ?? "YYYY-MM-DD")
-          colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(value.length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
+          colWidths[colIdx] = Math.max(
+            colWidths[colIdx],
+            clampWidth(
+              value.length * 1.15 + 2,
+              style.colMinWidth,
+              style.colMaxWidth,
+            ),
+          )
         } else {
           cell.value = value
-          colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(value.length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
+          colWidths[colIdx] = Math.max(
+            colWidths[colIdx],
+            clampWidth(
+              value.length * 1.15 + 2,
+              style.colMinWidth,
+              style.colMaxWidth,
+            ),
+          )
         }
       } else if (col.type === "number") {
         cell.value = typeof value === "number" ? value : Number(value)
-        colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(cellText(value).length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
+        colWidths[colIdx] = Math.max(
+          colWidths[colIdx],
+          clampWidth(
+            cellText(value).length * 1.15 + 2,
+            style.colMinWidth,
+            style.colMaxWidth,
+          ),
+        )
       } else if (col.type === "boolean") {
         cell.value = Boolean(value)
-        colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(cellText(value).length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
+        colWidths[colIdx] = Math.max(
+          colWidths[colIdx],
+          clampWidth(
+            cellText(value).length * 1.15 + 2,
+            style.colMinWidth,
+            style.colMaxWidth,
+          ),
+        )
       } else {
         cell.value = String(value)
-        colWidths[colIdx] = Math.max(colWidths[colIdx], clampWidth(String(value).length * 1.15 + 2, style.colMinWidth, style.colMaxWidth))
+        colWidths[colIdx] = Math.max(
+          colWidths[colIdx],
+          clampWidth(
+            String(value).length * 1.15 + 2,
+            style.colMinWidth,
+            style.colMaxWidth,
+          ),
+        )
       }
 
       if (col.type === "options" && col.options) {

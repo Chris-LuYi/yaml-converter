@@ -35,7 +35,7 @@ export interface ExcelStyle {
   fontName?: string
   fontSizeHeader?: number
   fontSizeData?: number
-  colorGroupBg?: string   // ARGB hex, e.g. "1F4E79"
+  colorGroupBg?: string // ARGB hex, e.g. "1F4E79"
   colorGroupFg?: string
   colorHeaderBg?: string
   colorHeaderFg?: string

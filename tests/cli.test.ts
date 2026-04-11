@@ -187,17 +187,23 @@ describe("CLI", () => {
     try {
       // YAML → Excel
       const toExcel = run(
-        "-i", "tests/fixtures/special-chars.yaml",
-        "-o", xlsx,
-        "--schema", "tests/fixtures/special-chars-schema.yaml",
+        "-i",
+        "tests/fixtures/special-chars.yaml",
+        "-o",
+        xlsx,
+        "--schema",
+        "tests/fixtures/special-chars-schema.yaml",
       )
       expect(toExcel.status).toBe(0)
 
       // Excel → YAML
       const toYaml = run(
-        "-i", xlsx,
-        "-o", outDir,
-        "--schema", "tests/fixtures/special-chars-schema.yaml",
+        "-i",
+        xlsx,
+        "-o",
+        outDir,
+        "--schema",
+        "tests/fixtures/special-chars-schema.yaml",
       )
       expect(toYaml.status).toBe(0)
 
