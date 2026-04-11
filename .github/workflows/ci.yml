@@ -44,6 +44,8 @@ jobs:
           bun-version: "1.3.9"
       - run: bun install
       - name: Create Release PR or Publish
+        id: changesets
+        continue-on-error: true
         uses: changesets/action@v1
         with:
           publish: bun run release
