@@ -33,6 +33,28 @@ export async function toYamlAll(
   return result
 }
 
+// ExcelJS returns different shapes for different cell types:
+//   plain string  → string
+//   rich text     → { richText: [{ text: string, font?: ... }, ...] }
+//   formula cell  → { formula: string, result: unknown }
+//   error cell    → { error: string }
+function resolveCellValue(raw: unknown): unknown {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw !== "object" || raw instanceof Date) return raw
+  const obj = raw as Record<string, unknown>
+  if (Array.isArray(obj.richText)) {
+    // Rich text: concatenate all text runs
+    return (obj.richText as Array<{ text?: string }>)
+      .map((r) => r.text ?? "")
+      .join("")
+  }
+  if ("result" in obj) {
+    // Formula cell: use the cached result
+    return obj.result
+  }
+  return raw
+}
+
 function convertSheet(
   ws: ExcelJS.Worksheet,
   schema: Schema,
@@ -63,22 +85,21 @@ function convertSheet(
       const col = schema.columns.find((c) => c.field === field)
       if (!col) return
 
-      if (cellValue === null || cellValue === undefined || cellValue === "")
-        return
+      const resolved = resolveCellValue(cellValue)
+      if (resolved === null || resolved === undefined || resolved === "") return
 
       if (col.type === "date") {
-        if (cellValue instanceof Date) {
-          obj[field] = dayjs.utc(cellValue).format(col.format ?? "YYYY-MM-DD")
-        } else if (typeof cellValue === "string") {
-          obj[field] = cellValue.trim()
+        if (resolved instanceof Date) {
+          obj[field] = dayjs.utc(resolved).format(col.format ?? "YYYY-MM-DD")
+        } else if (typeof resolved === "string") {
+          obj[field] = resolved.trim()
         }
       } else if (col.type === "number") {
-        obj[field] =
-          typeof cellValue === "number" ? cellValue : Number(cellValue)
+        obj[field] = typeof resolved === "number" ? resolved : Number(resolved)
       } else if (col.type === "boolean") {
-        obj[field] = Boolean(cellValue)
+        obj[field] = Boolean(resolved)
       } else {
-        obj[field] = String(cellValue).trim()
+        obj[field] = String(resolved).trim()
       }
     })
 
