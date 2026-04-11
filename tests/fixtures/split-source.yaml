@@ -1,0 +1,19 @@
+- source: alpha
+  name: Alpha One
+  status: Active
+  score: 90
+
+- source: alpha
+  name: Alpha Two
+  status: Active
+  score: 85
+
+- source: beta
+  name: Beta One
+  status: Inactive
+  score: 70
+
+- source: beta
+  name: Beta Two
+  status: Inactive
+  score: 65

@@ -1,0 +1,7 @@
+- name: Alpha One
+  status: Active
+  score: 90
+
+- name: Alpha Two
+  status: Active
+  score: 85

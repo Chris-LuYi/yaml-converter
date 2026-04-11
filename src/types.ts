@@ -39,4 +39,9 @@ export interface ConvertOptions {
   errorOutput?: string
   json?: boolean
   sheetSchemas?: string // placeholder — not yet implemented
+  recursive?: boolean
+  merge?: boolean
+  tagField?: string
+  splitBy?: string
+  dropField?: string
 }

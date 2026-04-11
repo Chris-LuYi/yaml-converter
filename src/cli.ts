@@ -6,10 +6,18 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs"
-import { basename, extname, join } from "node:path"
+import { basename, extname, join, relative } from "node:path"
 import chalk from "chalk"
 import { Command } from "commander"
-import { Document, isMap, isPair, isScalar, isSeq, parse } from "yaml"
+import {
+  Document,
+  isMap,
+  isPair,
+  isScalar,
+  isSeq,
+  parse,
+  stringify,
+} from "yaml"
 import { version } from "../package.json"
 import { toExcel, toExcelMulti } from "./converter/to-excel"
 import { sanitizeSheetName, toYamlAll } from "./converter/to-yaml"
@@ -51,6 +59,28 @@ program
     "--sheet-schemas <mapping>",
     "Per-sheet schema overrides (not yet implemented)",
   )
+  .option(
+    "--recursive",
+    "Recursively collect YAML files from subdirectories",
+    false,
+  )
+  .option(
+    "--merge",
+    "Merge all YAML files into one Excel sheet (directory input)",
+    false,
+  )
+  .option(
+    "--tag-field <name>",
+    "Column name injected with source filename when using --merge",
+  )
+  .option(
+    "--split-by <field>",
+    "Split rows into separate YAML files grouped by field value",
+  )
+  .option(
+    "--drop-field <field>",
+    "Remove a field from each row in split output",
+  )
   .action(async (opts: ConvertOptions) => {
     await run(opts)
   })
@@ -67,6 +97,12 @@ async function run(opts: ConvertOptions) {
   if (!existsSync(opts.input)) {
     emitFatal(opts.json, `Input file not found: ${opts.input}`)
     process.exit(2)
+  }
+
+  // Split mode: works on YAML or Excel file input (not directories)
+  if (opts.splitBy) {
+    await runSplit(opts)
+    return
   }
 
   // Directory input → multi-YAML-to-Excel mode
@@ -212,20 +248,82 @@ async function run(opts: ConvertOptions) {
   }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Collect YAML files from a directory. In recursive mode, tag = relative path
+ *  from root dir without extension (e.g. "project-a/mfe1"). Otherwise, tag = basename. */
+function collectYamlFiles(
+  dir: string,
+  recursive: boolean,
+): Array<{ absPath: string; tag: string }> {
+  function walk(current: string): Array<{ absPath: string; tag: string }> {
+    const results: Array<{ absPath: string; tag: string }> = []
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (entry.isDirectory() && recursive) {
+        results.push(...walk(join(current, entry.name)))
+      } else if (
+        entry.isFile() &&
+        /\.(yaml|yml)$/i.test(entry.name) &&
+        entry.name !== "schema.yaml" &&
+        !entry.name.endsWith("-schema.yaml")
+      ) {
+        const absPath = join(current, entry.name)
+        const rel = relative(dir, absPath)
+        const tag = recursive
+          ? rel.replace(/\.(yaml|yml)$/i, "").replace(/\\/g, "/")
+          : basename(entry.name, extname(entry.name))
+        results.push({ absPath, tag })
+      }
+    }
+    return results
+  }
+  return walk(dir).sort((a, b) => a.tag.localeCompare(b.tag))
+}
+
+/** Prepend a synthetic tag column to a schema for merged Excel output. */
+function buildTaggedSchema(schema: Schema, tagField: string): Schema {
+  return {
+    columns: [
+      { field: tagField, header: tagField, type: "string" },
+      ...schema.columns,
+    ],
+  }
+}
+
+/** Inject a tag field as the first key of each row (for merge mode). */
+function injectTag(
+  rows: Record<string, unknown>[],
+  tag: string,
+  tagField: string,
+): Record<string, unknown>[] {
+  return rows.map((r) => ({ [tagField]: tag, ...r }))
+}
+
+/** Remove a field from every row (for split --drop-field). */
+function dropFieldFromRows(
+  rows: Record<string, unknown>[],
+  field: string,
+): Record<string, unknown>[] {
+  return rows.map((r) => {
+    const copy = { ...r }
+    delete copy[field]
+    return copy
+  })
+}
+
+// ─── Directory mode (YAML folder → Excel) ────────────────────────────────────
+
 async function runDirectory(opts: ConvertOptions) {
   const inputDir = opts.input
 
-  const yamlFiles = readdirSync(inputDir)
-    .filter(
-      (f) =>
-        /\.(yaml|yml)$/i.test(f) &&
-        f !== "schema.yaml" &&
-        !f.endsWith("-schema.yaml"),
-    )
-    .sort()
-    .map((f) => join(inputDir, f))
+  if (opts.merge && !opts.tagField) {
+    emitFatal(opts.json, "--merge requires --tag-field <name>")
+    process.exit(2)
+  }
 
-  if (yamlFiles.length === 0) {
+  const entries = collectYamlFiles(inputDir, opts.recursive ?? false)
+
+  if (entries.length === 0) {
     emitFatal(opts.json, `No YAML files found in directory: ${inputDir}`)
     process.exit(2)
   }
@@ -235,47 +333,64 @@ async function runDirectory(opts: ConvertOptions) {
     opts.output = `${inputDir.replace(/\/+$/, "")}.xlsx`
   }
 
-  // Phase 1: parse + validate all files, collect errors and sheet data
+  // In merge mode, load one shared schema (no per-file overrides)
+  let mergeSchema: Schema | null = null
+  if (opts.merge) {
+    const schemaPath = opts.schema ?? "schema.yaml"
+    if (!existsSync(schemaPath)) {
+      emitFatal(opts.json, `Schema not found: ${schemaPath}`)
+      process.exit(2)
+    }
+    mergeSchema = loadSchema(schemaPath)
+  }
+
+  // Phase 1: parse + validate all files
   const allErrors: ValidationError[] = []
   const sheetData: Array<{
     name: string
     rows: Record<string, unknown>[]
-    schema: ReturnType<typeof loadSchema>
+    schema: Schema
   }> = []
 
-  for (const yamlFilePath of yamlFiles) {
-    const baseName = basename(yamlFilePath, extname(yamlFilePath))
-
-    // Per-file schema override: {baseName}-schema.yaml in CWD
-    const perFileSchemaPath = `${baseName}-schema.yaml`
-    const fallbackSchemaPath = opts.schema ?? "schema.yaml"
-    const schemaPath = existsSync(perFileSchemaPath)
-      ? perFileSchemaPath
-      : fallbackSchemaPath
-
-    if (!existsSync(schemaPath)) {
-      emitFatal(
-        opts.json,
-        `Schema not found for ${baseName}.yaml: tried ${perFileSchemaPath} and ${fallbackSchemaPath}`,
-      )
-      process.exit(2)
+  for (const entry of entries) {
+    let schema: Schema
+    if (opts.merge && mergeSchema) {
+      schema = mergeSchema
+    } else {
+      // Per-file schema override: {basename}-schema.yaml in CWD
+      const fileBase = basename(entry.tag)
+      const perFileSchemaPath = `${fileBase}-schema.yaml`
+      const fallbackSchemaPath = opts.schema ?? "schema.yaml"
+      const schemaPath = existsSync(perFileSchemaPath)
+        ? perFileSchemaPath
+        : fallbackSchemaPath
+      if (!existsSync(schemaPath)) {
+        emitFatal(
+          opts.json,
+          `Schema not found for ${entry.tag}: tried ${perFileSchemaPath} and ${fallbackSchemaPath}`,
+        )
+        process.exit(2)
+      }
+      schema = loadSchema(schemaPath)
     }
 
     try {
-      const schema = loadSchema(schemaPath)
-      const rows = parse(readFileSync(yamlFilePath, "utf-8")) as Record<
+      let rows = parse(readFileSync(entry.absPath, "utf-8")) as Record<
         string,
         unknown
       >[]
+      if (opts.merge && opts.tagField) {
+        rows = injectTag(rows, entry.tag, opts.tagField)
+      }
       const errors = validateRows(rows, schema).map((e) => ({
         ...e,
-        sheet: baseName,
+        sheet: entry.tag,
       }))
       allErrors.push(...errors)
-      sheetData.push({ name: baseName, rows, schema })
+      sheetData.push({ name: entry.tag, rows, schema })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      emitFatal(opts.json, `Error processing ${baseName}.yaml: ${message}`)
+      emitFatal(opts.json, `Error processing ${entry.tag}: ${message}`)
       process.exit(2)
     }
   }
@@ -289,46 +404,195 @@ async function runDirectory(opts: ConvertOptions) {
   }
 
   // Phase 2: write output
-  if (!opts.validate && opts.output) {
-    await toExcelMulti(sheetData, opts.output)
+  if (opts.merge) {
+    const mergedRows = sheetData.flatMap((s) => s.rows)
+    const taggedSchema = buildTaggedSchema(
+      mergeSchema as Schema,
+      opts.tagField as string,
+    )
+    const sheetName = sanitizeSheetName(basename(inputDir.replace(/\/+$/, "")))
+
+    if (!opts.validate && opts.output) {
+      await toExcel(mergedRows, taggedSchema, opts.output, sheetName)
+    }
+
+    emit(opts.json, {
+      status: "ok",
+      input: opts.input,
+      output: opts.output ?? null,
+      rows: mergedRows.length,
+      files: entries.length,
+    })
+    if (!opts.json) {
+      const verb = opts.validate ? "validated" : "merged"
+      const dest =
+        opts.output && !opts.validate ? chalk.gray(` → ${opts.output}`) : ""
+      console.log(
+        `${chalk.green("Done")}  ${mergedRows.length} rows ${verb} from ${entries.length} files${dest}`,
+      )
+    }
+  } else {
+    if (!opts.validate && opts.output) {
+      await toExcelMulti(
+        sheetData.map((s) => ({ ...s, name: sanitizeSheetName(s.name) })),
+        opts.output,
+      )
+    }
+
+    const sheetRowCounts: Record<string, number> = {}
+    for (const { name, rows } of sheetData) {
+      sheetRowCounts[sanitizeSheetName(name)] = rows.length
+    }
+    const totalRows = Object.values(sheetRowCounts).reduce((a, b) => a + b, 0)
+
+    emit(opts.json, {
+      status: "ok",
+      input: opts.input,
+      output: opts.output ?? null,
+      sheets: sheetRowCounts,
+      totalRows,
+    })
+
+    if (!opts.json) {
+      console.log(chalk.green("Done"))
+      const nameWidth = Math.max(
+        ...Object.keys(sheetRowCounts).map((n) => n.length),
+        4,
+      )
+      for (const [sheetName, count] of Object.entries(sheetRowCounts)) {
+        const dest =
+          opts.output && !opts.validate
+            ? chalk.gray(` → ${opts.output} (sheet: ${sheetName})`)
+            : ""
+        console.log(
+          `  ${chalk.cyan(sheetName.padEnd(nameWidth))}  ${count} rows${dest}`,
+        )
+      }
+      if (sheetData.length > 1) {
+        console.log(chalk.gray(`  ${"─".repeat(nameWidth + 12)}`))
+        const verb = opts.validate ? "validated" : "converted"
+        const destNote =
+          opts.output && !opts.validate ? chalk.gray(` → ${opts.output}`) : ""
+        console.log(
+          `  ${chalk.bold(String(totalRows))} rows ${verb} across ${sheetData.length} files${destNote}`,
+        )
+      }
+    }
+  }
+}
+
+// ─── Split mode (Excel/YAML → per-group YAML files) ──────────────────────────
+
+async function runSplit(opts: ConvertOptions) {
+  const ext = opts.input.split(".").pop()?.toLowerCase() ?? ""
+  const isYaml = ext === "yaml" || ext === "yml"
+
+  const outputDir =
+    opts.output ??
+    (isYaml
+      ? opts.input.replace(/\.(yaml|yml)$/i, "")
+      : opts.input.replace(/\.[^.]+$/, ""))
+
+  // Schema: required for Excel input, optional for YAML input
+  let schema: Schema | null = null
+  const resolvedSchema = opts.schema ?? "schema.yaml"
+  if (!isYaml) {
+    if (!existsSync(resolvedSchema)) {
+      emitFatal(opts.json, `Schema file not found: ${resolvedSchema}`)
+      process.exit(2)
+    }
+    schema = loadSchema(resolvedSchema)
+  } else if (existsSync(resolvedSchema)) {
+    schema = loadSchema(resolvedSchema)
   }
 
-  const sheetRowCounts: Record<string, number> = {}
-  for (const { name, rows } of sheetData) {
-    sheetRowCounts[name] = rows.length
+  // Collect all rows
+  let allRows: Record<string, unknown>[]
+  try {
+    if (isYaml) {
+      allRows = parse(readFileSync(opts.input, "utf-8")) as Record<
+        string,
+        unknown
+      >[]
+    } else {
+      const sheetMap = await toYamlAll(opts.input, schema as Schema)
+      allRows = [...sheetMap.values()].flat()
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    emitFatal(opts.json, message)
+    process.exit(2)
   }
-  const totalRows = Object.values(sheetRowCounts).reduce((a, b) => a + b, 0)
+
+  // Validate if schema available and not validate-only (validate-only still validates)
+  if (schema) {
+    const errors = validateRows(allRows, schema)
+    if (errors.length > 0) {
+      const errorPath = opts.errorOutput ?? `${outputDir}.errors.json`
+      writeErrors(errorPath, opts.input, errors)
+      emitErrors(opts, errors, errorPath)
+      process.exit(1)
+    }
+  }
+
+  // Group rows by split-by field
+  const groups = new Map<string, Record<string, unknown>[]>()
+  for (const row of allRows) {
+    const key = String(row[opts.splitBy as string] ?? "__unknown__")
+    const group = groups.get(key)
+    if (group) {
+      group.push(row)
+    } else {
+      groups.set(key, [row])
+    }
+  }
+
+  // Write output files
+  if (!opts.validate) {
+    mkdirSync(outputDir, { recursive: true })
+    for (const [key, rows] of groups) {
+      const outRows = opts.dropField
+        ? dropFieldFromRows(rows, opts.dropField)
+        : rows
+      const fileName = `${sanitizeSheetName(key)}.yaml`
+      const content = schema ? formatYaml(outRows, schema) : stringify(outRows)
+      writeFileSync(join(outputDir, fileName), content)
+    }
+  }
+
+  const groupCounts = Object.fromEntries(
+    [...groups.entries()].map(([k, r]) => [k, r.length]),
+  )
+  const totalRows = allRows.length
 
   emit(opts.json, {
     status: "ok",
     input: opts.input,
-    output: opts.output ?? null,
-    sheets: sheetRowCounts,
+    output: opts.validate ? null : outputDir,
+    groups: groupCounts,
     totalRows,
   })
 
   if (!opts.json) {
     console.log(chalk.green("Done"))
     const nameWidth = Math.max(
-      ...Object.keys(sheetRowCounts).map((n) => n.length),
+      ...Object.keys(groupCounts).map((n) => n.length),
       4,
     )
-    for (const [sheetName, count] of Object.entries(sheetRowCounts)) {
-      const dest =
-        opts.output && !opts.validate
-          ? chalk.gray(` → ${opts.output} (sheet: ${sheetName})`)
-          : ""
+    for (const [key, count] of Object.entries(groupCounts)) {
+      const dest = !opts.validate
+        ? chalk.gray(` → ${join(outputDir, `${sanitizeSheetName(key)}.yaml`)}`)
+        : ""
       console.log(
-        `  ${chalk.cyan(sheetName.padEnd(nameWidth))}  ${count} rows${dest}`,
+        `  ${chalk.cyan(key.padEnd(nameWidth))}  ${count} rows${dest}`,
       )
     }
-    if (sheetData.length > 1) {
+    if (groups.size > 1) {
       console.log(chalk.gray(`  ${"─".repeat(nameWidth + 12)}`))
-      const verb = opts.validate ? "validated" : "converted"
-      const destNote =
-        opts.output && !opts.validate ? chalk.gray(` → ${opts.output}`) : ""
+      const verb = opts.validate ? "validated" : "split"
+      const destNote = !opts.validate ? chalk.gray(` → ${outputDir}/`) : ""
       console.log(
-        `  ${chalk.bold(String(totalRows))} rows ${verb} across ${sheetData.length} files${destNote}`,
+        `  ${chalk.bold(String(totalRows))} rows ${verb} into ${groups.size} files${destNote}`,
       )
     }
   }

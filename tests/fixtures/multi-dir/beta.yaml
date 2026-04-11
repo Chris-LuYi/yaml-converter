@@ -1,0 +1,7 @@
+- name: Beta One
+  status: Inactive
+  score: 70
+
+- name: Beta Two
+  status: Inactive
+  score: 65

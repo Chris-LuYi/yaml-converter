@@ -1,0 +1,13 @@
+columns:
+  - field: name
+    header: Name
+    type: string
+    required: true
+  - field: status
+    header: Status
+    type: options
+    options: [Active, Inactive]
+    required: true
+  - field: score
+    header: Score
+    type: number
