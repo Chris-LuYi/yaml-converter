@@ -43,33 +43,21 @@ jobs:
         with:
           bun-version: "1.3.9"
       - run: bun install
-      - name: Create Release PR or Publish
-        id: changesets
-        continue-on-error: true
+      - name: Configure git
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+      - name: Version
+        run: |
+          bun run version
+          git add -A
+          git diff --staged --quiet || (git commit -m "chore: release" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish
         uses: changesets/action@v1
         with:
           publish: bun run release
-          version: bun run version
-          commit: "chore: release"
-          title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Auto-merge release PR
-        # Runs after changesets creates/updates the PR. The pull_request event
-        # from GITHUB_TOKEN doesn't trigger other workflows (GitHub loop prevention),
-        # so we merge directly here. --auto requires "Allow auto-merge" repo setting;
-        # direct merge works as long as CI already passed (release job needs: ci).
-        # Retry loop: GitHub API may not expose the new PR immediately after creation.
-        run: |
-          for i in 1 2 3 4 5; do
-            PR=$(gh pr list --head changeset-release/main --json number --jq '.[0].number' 2>/dev/null)
-            if [ -n "$PR" ]; then
-              gh pr merge --merge "$PR" || true
-              break
-            fi
-            echo "PR not found yet, retrying in 5s (attempt $i/5)..."
-            sleep 5
-          done
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
