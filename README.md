@@ -170,6 +170,19 @@ All keys are optional — omit any to keep the built-in default.
 
 Strings containing `"`, `&`, `'`, commas, Unicode, and URL query parameters are handled transparently in both directions. YAML output uses the minimal quoting style required (YAML 1.2 — no automatic date coercion).
 
+## Gemini CLI Skill
+
+This repo ships an [Agent Skill](https://geminicli.com/docs/cli/skills/) for Gemini CLI in `.gemini/skills/yaml-excel-config/`. It teaches Gemini to design a schema + YAML data for whatever you want to track, validate it, and convert it to Excel (or back) with this CLI.
+
+- **In this repo:** start `gemini` from the repo root; workspace skills in `.gemini/skills/` are discovered automatically.
+- **Everywhere:** copy the folder to your user skills directory:
+
+  ```bash
+  mkdir -p ~/.gemini/skills && cp -r .gemini/skills/yaml-excel-config ~/.gemini/skills/
+  ```
+
+Check it's loaded with `/skills list`, then ask e.g. *"Create a YAML config tracking our microfrontends (name, team, framework, status, go-live date) and convert it to Excel."* The skill runs `yaml-converter` if installed globally, else `npx -y yaml-converter`.
+
 ## Exit Codes
 
 | Code | Meaning |
