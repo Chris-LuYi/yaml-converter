@@ -47,6 +47,25 @@ Use `assets/schema.template.yaml` as the starting point. Rules — see
 - `group` is optional; consecutive columns with the same `group` get a merged
   parent header. Keep grouped columns adjacent.
 
+#### Tree / hierarchical data (capability maps, org charts, feature trees)
+
+Rows are flat — nested YAML is not supported. Flatten the tree so each row is
+one leaf node and the path reads left-to-right from big to small scope:
+
+- `id` (string, required): dotted path such as `ING.BATCH.CDC` — unique and sorts
+  the tree depth-first.
+- One column per level (`domain` L1, `capability` L2, `feature` L3, ...),
+  all in one `group` (e.g. "Capability"). Upper levels `required: true`; the
+  deepest levels optional so a node without children can be its own row.
+- A status matrix across a second dimension (regions, environments, tenants):
+  one `options` column per item, grouped (e.g. "Regional Status"). Define the
+  status list once with a YAML anchor (`options: &status [...]`) and reuse it
+  (`options: *status`).
+- In the data, repeat the full path on every row and order rows depth-first.
+
+Working example: `examples/daas-capabilities/` in the yaml-converter repo, and
+`assets/tree.schema.template.yaml` in this skill.
+
 ### 3. Write the data YAML
 
 Use `assets/data.template.yaml` as a guide. Type rules the validator enforces

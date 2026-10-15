@@ -1,0 +1,81 @@
+# DaaS capability map — schema
+# Tree is flattened into level columns (Domain → Capability → Feature),
+# read left-to-right from big to small scope. One row = one leaf node.
+# Regional status is one column per region so the sheet reads as a matrix.
+
+columns:
+  # ── Capability tree ─────────────────────────────────────────
+  - field: id
+    header: ID
+    group: Capability
+    type: string
+    required: true          # dotted path, e.g. ING.BATCH.CDC — unique, sortable
+
+  - field: domain
+    header: Domain (L1)
+    group: Capability
+    type: string
+    required: true
+
+  - field: capability
+    header: Capability (L2)
+    group: Capability
+    type: string
+    required: true
+
+  - field: feature
+    header: Feature (L3)
+    group: Capability
+    type: string            # optional — omit when the capability has no sub-features
+
+  # ── Regional implementation status ──────────────────────────
+  - field: status_na
+    header: North America
+    group: Regional Status
+    type: options
+    options: &status [Not Started, Planned, In Progress, Pilot, Live, N/A]
+    required: true
+
+  - field: status_emea
+    header: EMEA
+    group: Regional Status
+    type: options
+    options: *status
+    required: true
+
+  - field: status_apac
+    header: APAC
+    group: Regional Status
+    type: options
+    options: *status
+    required: true
+
+  - field: status_latam
+    header: LATAM
+    group: Regional Status
+    type: options
+    options: *status
+    required: true
+
+  # ── Delivery ────────────────────────────────────────────────
+  - field: owner
+    header: Owner
+    group: Delivery
+    type: string
+
+  - field: priority
+    header: Priority
+    group: Delivery
+    type: options
+    options: [P0, P1, P2, P3]
+
+  - field: target_date
+    header: Target Date
+    group: Delivery
+    type: date
+    format: YYYY-MM-DD
+
+  - field: notes
+    header: Notes
+    group: Delivery
+    type: string

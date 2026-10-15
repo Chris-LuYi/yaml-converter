@@ -1,0 +1,111 @@
+# DaaS capability map — data
+# Order rows depth-first (domain → capability → feature) so Excel reads as a tree.
+# Each row repeats its full path; IDs are dotted paths for sorting and lookup.
+
+# ── Data Ingestion ───────────────────────────────────────────
+- id: ING.BATCH.FILE
+  domain: Data Ingestion
+  capability: Batch Ingestion
+  feature: File drop (S3 / SFTP)
+  status_na: Live
+  status_emea: Live
+  status_apac: In Progress
+  status_latam: Planned
+  owner: Ingestion Team
+  priority: P0
+  target_date: "2026-12-15"
+
+- id: ING.BATCH.CDC
+  domain: Data Ingestion
+  capability: Batch Ingestion
+  feature: Database CDC
+  status_na: Live
+  status_emea: Pilot
+  status_apac: Planned
+  status_latam: Not Started
+  owner: Ingestion Team
+  priority: P1
+  target_date: "2027-03-31"
+  notes: "EMEA pilot limited to Postgres sources"
+
+- id: ING.STREAM
+  domain: Data Ingestion
+  capability: Streaming Ingestion
+  status_na: In Progress
+  status_emea: Planned
+  status_apac: Not Started
+  status_latam: N/A
+  owner: Platform Team
+  priority: P1
+  notes: "No leaf features yet — capability-level row"
+
+# ── Data Catalog ─────────────────────────────────────────────
+- id: CAT.DISC.SEARCH
+  domain: Data Catalog
+  capability: Discovery
+  feature: Dataset search
+  status_na: Live
+  status_emea: Live
+  status_apac: Live
+  status_latam: In Progress
+  owner: Catalog Team
+  priority: P0
+
+- id: CAT.DISC.LINEAGE
+  domain: Data Catalog
+  capability: Discovery
+  feature: Lineage graph
+  status_na: Pilot
+  status_emea: Planned
+  status_apac: Planned
+  status_latam: Not Started
+  owner: Catalog Team
+  priority: P2
+  target_date: "2027-06-30"
+
+# ── Access & Governance ──────────────────────────────────────
+- id: GOV.ACCESS.RBAC
+  domain: Access & Governance
+  capability: Access Control
+  feature: Role-based access
+  status_na: Live
+  status_emea: Live
+  status_apac: Live
+  status_latam: Live
+  owner: Security Team
+  priority: P0
+
+- id: GOV.RESIDENCY
+  domain: Access & Governance
+  capability: Data Residency
+  status_na: N/A
+  status_emea: In Progress
+  status_apac: Planned
+  status_latam: Not Started
+  owner: Security Team
+  priority: P0
+  target_date: "2027-01-31"
+  notes: "GDPR-driven; EMEA first"
+
+# ── Data Delivery ────────────────────────────────────────────
+- id: DEL.API.REST
+  domain: Data Delivery
+  capability: Delivery APIs
+  feature: REST query API
+  status_na: Live
+  status_emea: Live
+  status_apac: In Progress
+  status_latam: Planned
+  owner: API Team
+  priority: P0
+
+- id: DEL.API.GRAPHQL
+  domain: Data Delivery
+  capability: Delivery APIs
+  feature: GraphQL API
+  status_na: Planned
+  status_emea: Not Started
+  status_apac: Not Started
+  status_latam: Not Started
+  owner: API Team
+  priority: P3
