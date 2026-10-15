@@ -63,8 +63,11 @@ one leaf node and the path reads left-to-right from big to small scope:
   (`options: *status`).
 - In the data, repeat the full path on every row and order rows depth-first.
 
-Working example: `examples/daas-capabilities/` in the yaml-converter repo, and
-`assets/tree.schema.template.yaml` in this skill.
+Complete working sample bundled with this skill: `examples/daas-capabilities/`
+(`schema.yaml`, `daas-capabilities.yaml`, `README.md`) — a DaaS capability map
+(Domain → Capability → Feature) with per-region implementation status. When the
+user wants a capability map or similar tree tracker, copy both YAML files into
+their project as the starting point, then rename levels/regions and replace rows.
 
 ### 3. Write the data YAML
 
