@@ -1,0 +1,52 @@
+# Schema template for yaml-converter.
+# Column order here = column order in Excel. Delete what you don't need.
+
+columns:
+  # ── Identity ────────────────────────────────────────────────
+  - field: name
+    header: Name
+    group: Identity
+    type: string
+    required: true
+
+  - field: owner
+    header: Owner
+    group: Identity
+    type: string
+
+  # ── Details ─────────────────────────────────────────────────
+  - field: category
+    header: Category
+    group: Details
+    type: options
+    options: [Frontend, Backend, Infra, Data]   # Excel dropdown
+    required: true
+
+  - field: priority
+    header: Priority
+    group: Details
+    type: number
+
+  - field: enabled
+    header: Enabled
+    group: Details
+    type: boolean
+
+  # ── Lifecycle ───────────────────────────────────────────────
+  - field: status
+    header: Status
+    group: Lifecycle
+    type: options
+    options: [Planned, In Progress, Done, Retired]
+    required: true
+
+  - field: due_date
+    header: Due Date
+    group: Lifecycle
+    type: date
+    format: YYYY-MM-DD
+
+  - field: notes
+    header: Notes
+    group: Lifecycle
+    type: string
