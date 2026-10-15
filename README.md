@@ -183,6 +183,8 @@ This repo ships an [Agent Skill](https://geminicli.com/docs/cli/skills/) for Gem
 
 Check it's loaded with `/skills list`, then ask e.g. *"Create a YAML config tracking our microfrontends (name, team, framework, status, go-live date) and convert it to Excel."* The skill runs `yaml-converter` if installed globally, else `npx -y yaml-converter`.
 
+The skill bundles a complete sample in `examples/daas-capabilities/`: a DaaS capability tree (Domain → Capability → Feature) with an implementation status for each region. Ask Gemini to start from it, e.g. *"Use the DaaS capability sample to build my capability map and convert it to Excel."*
+
 ## Exit Codes
 
 | Code | Meaning |
