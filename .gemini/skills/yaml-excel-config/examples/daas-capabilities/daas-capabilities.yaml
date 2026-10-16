@@ -27,6 +27,9 @@
   priority: P1
   target_date: "2027-03-31"
   notes: "EMEA pilot limited to Postgres sources"
+  _comments:                     # optional — become Excel cell notes
+    status_emea: "Pilot with 2 tenants; GA review in Jan"
+    status_latam: "Blocked on regional cloud account"
 
 - id: ING.STREAM
   domain: Data Ingestion
@@ -86,6 +89,8 @@
   priority: P0
   target_date: "2027-01-31"
   notes: "GDPR-driven; EMEA first"
+  _comments:
+    status_na: "No residency requirement in NA"
 
 # ── Data Delivery ────────────────────────────────────────────
 - id: DEL.API.REST

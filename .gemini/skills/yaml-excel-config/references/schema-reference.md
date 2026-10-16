@@ -28,13 +28,35 @@ columns:
 
 | Type | Valid YAML value | Excel output |
 |------|------------------|--------------|
-| `string`  | Any string. Required strings must be non-empty. | Text cell |
-| `number`  | Unquoted integer or float (`42`, `3.5`). | Numeric cell |
-| `date`    | String matching `format` exactly (`"2024-03-01"`). | Real Excel date cell with matching number format |
-| `boolean` | `true` / `false` | Boolean cell |
+| `string`  | Any string. Required strings must be non-empty. | Text-formatted cell |
+| `number`  | Unquoted integer or float (`42`, `3.5`). | Numeric cell + number validation |
+| `date`    | String matching `format` exactly (`"2024-03-01"`). | Real Excel date cell with matching number format + date validation |
+| `boolean` | `true` / `false` | Boolean cell + `TRUE`/`FALSE` dropdown |
 | `options` | One of `options`, case-sensitive. | Text cell + dropdown validation (blank allowed unless required) |
 
+Typing covers the whole column: empty cells and `blankRows` (default 1000)
+empty rows below the data get the same dropdown, format and validation, so rows
+added in Excel are typed too. Long option lists, or lists with commas/quotes,
+are stored on a hidden `_yc_options` sheet, which Excel → YAML ignores.
+
 Optional fields may be omitted or set to `null` (`~`).
+
+## Cell comments (`_comments`)
+
+`_comments` is a reserved row key, not a schema column. It maps schema fields
+to note text, and each entry becomes an Excel cell note:
+
+```yaml
+- name: Orders API
+  status: Planned
+  _comments:
+    status: "Waiting on budget approval"
+    due_date: "No date yet"   # notes work on empty cells
+```
+
+Rules: keys must be schema `field` names and values must be strings, or
+validation fails with `field: _comments`. Excel → YAML puts notes back into
+`_comments`, so the round-trip keeps them.
 
 ## Common date formats (dayjs tokens)
 

@@ -14,3 +14,4 @@ excel:
     colMaxWidth: 50             # maximum column width (Excel units)
     rowHeightHeader: 20         # pt — header row height
     rowHeightData: 18           # pt — data row height
+    blankRows: 1000             # empty rows below the data that get dropdowns/date/number typing
