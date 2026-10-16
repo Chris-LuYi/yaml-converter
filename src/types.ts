@@ -43,6 +43,9 @@ export interface ExcelStyle {
   colMaxWidth?: number
   rowHeightHeader?: number
   rowHeightData?: number
+  /** Empty rows below the data that get the schema's dropdowns, date/number
+   *  checks and cell formats, so rows added in Excel are typed too. */
+  blankRows?: number
 }
 
 export interface AppConfig {

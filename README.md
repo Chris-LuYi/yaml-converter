@@ -68,11 +68,15 @@ Supported field types:
 
 | Type | Excel behaviour |
 |------|----------------|
-| `string` | Plain text cell |
-| `number` | Numeric cell |
-| `date` | Date cell — formatted via `format` (dayjs tokens) |
-| `boolean` | Boolean cell |
+| `string` | Text-formatted cell (Excel won't turn `007` into `7` or `1-2` into a date) |
+| `number` | Numeric cell + "must be a number" validation |
+| `date` | Date cell formatted via `format` (dayjs tokens) + date validation |
+| `boolean` | Boolean cell + `TRUE`/`FALSE` dropdown |
 | `options` | Text cell + dropdown validation list |
+
+Column types apply to the **whole column**, not just cells that have values: empty cells and a block of blank rows below the data (`blankRows`, default 1000) get the same dropdown, cell format and validation. Rows added in Excel are typed too. Invalid entries are rejected with a message, and each cell shows a hint (e.g. the date format). `required` columns don't accept blanks when edited.
+
+Dropdown lists that are longer than Excel's 255-character inline limit, or that contain commas or quotes, are written to a hidden `_yc_options` sheet and referenced from there. Excel → YAML ignores hidden sheets.
 
 For a directory input, a per-file schema override is loaded from `{basename}-schema.yaml` in CWD if it exists, falling back to the shared schema.
 
@@ -143,6 +147,7 @@ The generated Excel file includes:
 - Frozen header row(s)
 - Auto-fitted column widths (capped at a configurable maximum)
 - Row height and font size tuned for readability
+- Schema-typed columns (dropdowns, date/number checks, text format) over data rows plus `blankRows` empty rows
 
 ### Config file
 
@@ -162,6 +167,7 @@ excel:
     colMaxWidth: 50
     rowHeightHeader: 20
     rowHeightData: 18
+    blankRows: 1000            # empty rows below the data that get column typing
 ```
 
 All keys are optional — omit any to keep the built-in default.

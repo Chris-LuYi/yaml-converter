@@ -82,4 +82,5 @@ excel:
     colMaxWidth: 50
     rowHeightHeader: 20
     rowHeightData: 18
+    blankRows: 1000   # empty rows below data that get dropdowns/date/number typing
 ```

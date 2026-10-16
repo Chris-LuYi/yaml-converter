@@ -42,6 +42,9 @@ Use `assets/schema.template.yaml` as the starting point. Rules — see
 - Each column needs `field` (snake_case key used in data), `header` (Excel
   label) and `type`: one of `string | number | date | boolean | options`.
 - `options` type **must** have a non-empty `options: [...]` list → Excel dropdown.
+- Every column's type is applied to the whole column in Excel (dropdowns for
+  `options`/`boolean`, date and number validation, text format for `string`),
+  including blank rows below the data, so users can add rows in Excel safely.
 - `date` type takes an optional `format` (dayjs tokens, default `YYYY-MM-DD`).
 - `required: true` makes the field mandatory; otherwise it may be omitted/null.
 - `group` is optional; consecutive columns with the same `group` get a merged

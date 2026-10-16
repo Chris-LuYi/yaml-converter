@@ -3,6 +3,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat"
 import utc from "dayjs/plugin/utc"
 import ExcelJS from "exceljs"
 import type { Schema } from "../types"
+import { OPTIONS_SHEET } from "./to-excel"
 
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
@@ -28,6 +29,8 @@ export async function toYamlAll(
   await wb.xlsx.readFile(inputPath)
   const result = new Map<string, Record<string, unknown>[]>()
   for (const ws of wb.worksheets) {
+    // Skip hidden sheets (e.g. the dropdown lists sheet written by toExcel)
+    if (ws.state !== "visible" || ws.name === OPTIONS_SHEET) continue
     result.set(ws.name, convertSheet(ws, schema))
   }
   return result
@@ -97,7 +100,11 @@ function convertSheet(
       } else if (col.type === "number") {
         obj[field] = typeof resolved === "number" ? resolved : Number(resolved)
       } else if (col.type === "boolean") {
-        obj[field] = Boolean(resolved)
+        // Some editors store a picked "TRUE"/"FALSE" as text
+        obj[field] =
+          typeof resolved === "string"
+            ? resolved.trim().toLowerCase() === "true"
+            : Boolean(resolved)
       } else {
         obj[field] = String(resolved).trim()
       }
