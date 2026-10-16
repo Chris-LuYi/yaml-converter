@@ -41,6 +41,23 @@ are stored on a hidden `_yc_options` sheet, which Excel → YAML ignores.
 
 Optional fields may be omitted or set to `null` (`~`).
 
+## Cell comments (`_comments`)
+
+`_comments` is a reserved row key, not a schema column. It maps schema fields
+to note text, and each entry becomes an Excel cell note:
+
+```yaml
+- name: Orders API
+  status: Planned
+  _comments:
+    status: "Waiting on budget approval"
+    due_date: "No date yet"   # notes work on empty cells
+```
+
+Rules: keys must be schema `field` names and values must be strings, or
+validation fails with `field: _comments`. Excel → YAML puts notes back into
+`_comments`, so the round-trip keeps them.
+
 ## Common date formats (dayjs tokens)
 
 | Format | Example |

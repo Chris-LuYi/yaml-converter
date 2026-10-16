@@ -78,6 +78,20 @@ Column types apply to the **whole column**, not just cells that have values: emp
 
 Dropdown lists that are longer than Excel's 255-character inline limit, or that contain commas or quotes, are written to a hidden `_yc_options` sheet and referenced from there. Excel → YAML ignores hidden sheets.
 
+### Cell comments
+
+Add an optional `_comments` map to any row to attach Excel cell notes (the hover comments in Excel). Keys are schema `field` names, and a comment can sit on an empty cell:
+
+```yaml
+- app_name: Auth MFE
+  status: Beta
+  _comments:
+    status: "GA blocked on pen test"
+    deploy_date: "Date TBD"      # cell is empty, note still shown
+```
+
+Excel → YAML reads notes back into `_comments`, so comments added in Excel round-trip too. Validation fails if a comment names a field that isn't in the schema, or if its value isn't text.
+
 For a directory input, a per-file schema override is loaded from `{basename}-schema.yaml` in CWD if it exists, falling back to the shared schema.
 
 ## Multi-Sheet Excel → YAML

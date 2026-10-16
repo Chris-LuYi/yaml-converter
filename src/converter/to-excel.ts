@@ -2,7 +2,7 @@ import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
 import utc from "dayjs/plugin/utc"
 import ExcelJS from "exceljs"
-import type { ExcelStyle, Schema } from "../types"
+import { COMMENTS_KEY, type ExcelStyle, type Schema } from "../types"
 
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
@@ -122,12 +122,17 @@ function addSheetToWorkbook(
   for (const row of rows) {
     const excelRow = ws.addRow([])
     excelRow.height = style.rowHeightData
+    const comments = rowComments(row)
     schema.columns.forEach((col, colIdx) => {
       const cell = excelRow.getCell(colIdx + 1)
       const value = row[col.field]
 
       cell.font = { name: style.fontName, size: style.fontSizeData }
       cell.alignment = { vertical: "middle", wrapText: false }
+
+      // Comments can sit on empty cells too, so set before the null check
+      const comment = comments[col.field]
+      if (comment) cell.note = comment
 
       if (value === undefined || value === null) {
         cell.value = null
@@ -203,6 +208,17 @@ function addSheetToWorkbook(
   schema.columns.forEach((_, idx) => {
     ws.getColumn(idx + 1).width = colWidths[idx]
   })
+}
+
+/** Extract the row's cell comments, ignoring anything that isn't text. */
+function rowComments(row: Record<string, unknown>): Record<string, string> {
+  const raw = row[COMMENTS_KEY]
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {}
+  const out: Record<string, string> = {}
+  for (const [field, text] of Object.entries(raw)) {
+    if (typeof text === "string" && text.trim()) out[field] = text
+  }
+  return out
 }
 
 function truncate(text: string, max = MAX_MESSAGE): string {

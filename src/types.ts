@@ -1,3 +1,7 @@
+/** Reserved row key holding cell comments: { <field>: "<note text>" }.
+ *  Written as Excel cell notes and read back from them. */
+export const COMMENTS_KEY = "_comments"
+
 export type FieldType = "string" | "number" | "date" | "boolean" | "options"
 
 export interface ColumnSchema {

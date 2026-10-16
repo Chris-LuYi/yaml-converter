@@ -9,6 +9,8 @@
   status: In Progress         # options → exact, case-sensitive match
   due_date: "2026-11-30"      # date → quoted, matches schema format
   notes: "Depends on auth v2, see RFC #42"
+  _comments:                  # optional — Excel cell notes, keyed by field
+    status: "Blocked until auth v2 ships"
 
 - name: Orders API
   owner: Commerce

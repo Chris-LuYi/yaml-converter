@@ -89,6 +89,12 @@ Use `assets/data.template.yaml` as a guide. Type rules the validator enforces
 - Keys not in the schema are ignored (not written to Excel). Nested objects or
   lists are not supported as cell values — flatten them into separate columns.
 - Separate rows with a blank line for readability.
+- **Cell comments:** add an optional `_comments` map to a row
+  (`_comments: { status: "Blocked on vendor" }`). Keys must be schema fields
+  (unknown keys fail validation); each becomes an Excel cell note, even on an
+  empty cell. Notes added in Excel come back as `_comments` on Excel → YAML.
+  Use comments for context about one cell; use a `notes` column for
+  row-level text people should filter or see without hovering.
 
 ### 4. Validate, then convert
 

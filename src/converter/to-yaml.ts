@@ -2,7 +2,7 @@ import dayjs from "dayjs"
 import customParseFormat from "dayjs/plugin/customParseFormat"
 import utc from "dayjs/plugin/utc"
 import ExcelJS from "exceljs"
-import type { Schema } from "../types"
+import { COMMENTS_KEY, type Schema } from "../types"
 import { OPTIONS_SHEET } from "./to-excel"
 
 dayjs.extend(customParseFormat)
@@ -110,10 +110,34 @@ function convertSheet(
       }
     })
 
-    if (Object.keys(obj).length > 0) rows.push(obj)
+    if (Object.keys(obj).length === 0) return
+
+    const comments: Record<string, string> = {}
+    // Look up each mapped column: eachCell would skip notes on empty cells
+    for (const [colIdx, field] of colIndexToField) {
+      const text = noteText(row.getCell(colIdx).note)
+      if (text) comments[field] = text
+    }
+    if (Object.keys(comments).length > 0) obj[COMMENTS_KEY] = comments
+
+    rows.push(obj)
   })
 
   return rows
+}
+
+// ExcelJS returns a note as a plain string when written in this session, or
+// as { texts: [{ text }, ...] } when read from a file.
+function noteText(note: unknown): string {
+  if (!note) return ""
+  if (typeof note === "string") return note.trim()
+  const texts = (note as { texts?: Array<{ text?: string }> }).texts
+  return Array.isArray(texts)
+    ? texts
+        .map((t) => t.text ?? "")
+        .join("")
+        .trim()
+    : ""
 }
 
 function detectHeaderRow(
